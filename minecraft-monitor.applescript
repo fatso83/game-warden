@@ -2,16 +2,24 @@ use scripting additions
 use framework "Foundation"
 use framework "AppKit"
 
+-- This is the line you need to change!
+-- It should to point to the user that controls the parent account
+property dataStorageDirectory : "/Users/carlerik/"
+
+--------------------------------------------------------------------------------
+-- Do not change below this line
+--------------------------------------------------------------------------------
 property statusItem : missing value
 property interval : 1.0
-property dailyUsageFile : (POSIX path of (path to home folder)) & "mc-daily-usage.txt"
+property dailyUsageFile : dataStorageDirectory & "mc-daily-usage.txt"
 property dailyUsageTime : "00:00:00"
-property weeklyUsageFile : (POSIX path of (path to home folder)) & "mc-weekly-usage.txt"
+property weeklyUsageFile : dataStorageDirectory & "mc-weekly-usage.txt"
 property weeklyUsageTime : "00:00:00"
 property monitoredProcess : "minecraft"
 property processGrepPattern : "[m]inecraft"
-property weeklyUsageLimit : "05:15:00"
-property logFile : (POSIX path of (path to home folder)) & "mc-usage-log.txt"
+property weeklyUsageLimit : "05:00:00"
+property dailyUsageLimit : "00:45:00"
+property logFile : dataStorageDirectory & "mc-usage-log.txt"
 
 writeFile("", logFile, 0)
 
@@ -61,7 +69,7 @@ repeat
 
 			my updateStatusItem("Minecraft Today: " & dailyUsageTime & " Week: " & weeklyUsageTime)
 
-			if weeklyUsageTime > weeklyUsageLimit then
+			if weeklyUsageTime > weeklyUsageLimit or dailyUsageTime > dailyUsageLimit then
 				try
 					do shell script "pgrep -f " & quoted form of processGrepPattern & " | xargs kill"
 				end try
@@ -113,22 +121,3 @@ on timeToSeconds(timeString)
 	return (hrs as integer) * 3600 + (mins as integer) * 60 + (secs as integer)
 end timeToSeconds
 
-on secondsToTime(totalSecs)
-	set hrs to totalSecs div 3600
-	set mins to (totalSecs mod 3600) div 60
-	set secs to totalSecs mod 60
-	return pad(hrs) & ":" & pad(mins) & ":" & pad(secs)
-end secondsToTime
-
-on pad(num)
-	if num < 10 then return "0" & num
-	return num as string
-end pad
-
-on formatDate(aDate)
-	return ((year of aDate) as string) & pad(month of aDate as integer) & pad(day of aDate)
-end formatDate
-
-on weekNumber(aDate)
-	return (do shell script "date -jf '%Y-%m-%d' '" & (year of aDate) & "-" & pad(month of aDate as integer) & "-" & pad(day of aDate) & "' '+%W'") as integer
-end weekNumber
