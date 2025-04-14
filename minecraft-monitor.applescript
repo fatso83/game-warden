@@ -92,28 +92,11 @@ on readFileOrDefault(filePath, defaultValue)
 end readFileOrDefault
 
 on writeFile(textContent, filePath, eofMode)
-	try
-		set fileAlias to POSIX file filePath as alias
-	on error
-		do shell script "touch " & quoted form of filePath
-		set fileAlias to POSIX file filePath as alias
-	end try
-	
-	try
-		set fileRef to open for access fileAlias with write permission
-		if eofMode = 0 then
-			set eof of fileRef to 0
-		else
-			set textContent to textContent & linefeed
-		end if
-		write textContent to fileRef starting at eof
-		close access fileRef
-	on error err
-		display dialog "Write error: " & err & " to file " & filePath giving up after 5
-		try
-			close access fileAlias
-		end try
-	end try
+	if eofMode = 0 then
+		do shell script "echo " & quoted form of textContent & " > " & quoted form of filePath
+	else
+		do shell script "echo " & quoted form of textContent & " >> " & quoted form of filePath
+	end if
 end writeFile
 
 on incrementTime(filePath, currentTime, incrementSeconds)
