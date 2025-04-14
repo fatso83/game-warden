@@ -23,7 +23,7 @@ Now you need to navigate to the folder in the `Terminal.app`. If you have opened
 
 ```bash
 cd ~/Downloads/minecraft-monitor-main
-./scripts/install.sh
+./install.sh
 ```
 
 That's it!
@@ -39,4 +39,4 @@ You can see the basic settings in the file `config.plist`, which you can open in
     <key>dailyMax</key>
     <string>1:00</string>
 ```
-Just change the values as you see fit. This is what I found right for my 7 year old. Once you feel this is right, just re-run `./scripts/install.sh`.
+Just change the values as you see fit. This is what I found right for my 7 year old. Once you feel this is right, just re-run `./install.sh`.

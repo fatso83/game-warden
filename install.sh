@@ -22,7 +22,7 @@ cleanup(){
 
 install_scripts(){
     sudo mkdir -p "$INSTALL_DIR"
-    sudo cp -f ./config.plist scripts/keep-alive.sh  "$INSTALL_DIR/"
+    sudo cp -f ./config.plist keep-alive.sh  "$INSTALL_DIR/"
     sudo osacompile -o "$INSTALL_DIR/minecraft-monitor.scpt" minecraft-monitor.applescript 
     echo "Scripts installed to $INSTALL_DIR"
 }
