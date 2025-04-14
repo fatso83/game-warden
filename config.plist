@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" 
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Where you want all files containing messages and time to be logged -->
+    <key>dataDir</key>
+    <string>/opt/minecraft-monitor/data</string>
+
+    <!-- hour:minutes -->
+    <key>weeklyMax</key>
+    <string>5:00</string>
+
+    <!-- hour:minutes -->
+    <key>dailyMax</key>
+    <string>1:00</string>
+</dict>
+</plist>

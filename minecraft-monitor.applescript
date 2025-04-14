@@ -2,83 +2,99 @@ use scripting additions
 use framework "Foundation"
 use framework "AppKit"
 
--- This is the line you need to change!
--- It should to point to the user that controls the parent account
-property dataStorageDirectory : "/Users/carlerik/"
-
---------------------------------------------------------------------------------
--- Do not change below this line
---------------------------------------------------------------------------------
-property statusItem : missing value
-property interval : 1.0
-property dailyUsageFile : dataStorageDirectory & "mc-daily-usage.txt"
-property dailyUsageTime : "00:00:00"
-property weeklyUsageFile : dataStorageDirectory & "mc-weekly-usage.txt"
-property weeklyUsageTime : "00:00:00"
-property monitoredProcess : "minecraft"
+property statusItem         : missing value
+property interval           : 1.0
+property dailyUsageTime     : "00:00:00"
+property weeklyUsageTime    : "00:00:00"
+property monitoredProcess   : "minecraft"
 property processGrepPattern : "[m]inecraft"
-property weeklyUsageLimit : "05:00:00"
-property dailyUsageLimit : "00:45:00"
-property logFile : dataStorageDirectory & "mc-usage-log.txt"
+property dailyUsageFile     is missing value
+property weeklyUsageFile    is missing value
+property logFile            is missing value
+property weeklyUsageLimit   is missing value
+property dailyUsageLimit    is missing value
+property plistPath          is missing value
 
-writeFile("", logFile, 0)
-
--- Reset daily usage file if the day changed
-try
-	tell application "System Events" to set fileDate to creation date of file dailyUsageFile
-	set fileDateString to formatDate(fileDate)
-	set currentDateString to formatDate(current date)
-	if fileDateString ≠ currentDateString then
-		writeFile("Reset daily usage: " & fileDateString & " ≠ " & currentDateString, logFile, 1)
-		do shell script "rm -f " & quoted form of dailyUsageFile
-		writeFile(dailyUsageTime, dailyUsageFile, 0)
+on run argv
+	if (count of argv) < 1 then
+		do shell script ">&2 echo 'Error: Missing required argument (path to config.plist)'; exit 1"
+	else
+        set plistPath to item 1 of argv
+        do shell script " [ -e " & plistPath & " ] || (echo 'No such file: " & plistPath & "' && exit 1)"
+        main()
 	end if
-on error err
-	writeFile("Daily reset error: " & err, logFile, 1)
-end try
+end run
 
--- Reset weekly usage file if week changed
-try
-	tell application "System Events" to set fileDate to creation date of file weeklyUsageFile
-	set fileWeekNumber to weekNumber(fileDate)
-	set currentWeekNumber to (do shell script "date +%W") as integer
-	if fileWeekNumber ≠ currentWeekNumber then
-		writeFile("Reset weekly usage: Week " & fileWeekNumber & " ≠ " & currentWeekNumber, logFile, 1)
-		do shell script "rm -f " & quoted form of weeklyUsageFile
-		writeFile(weeklyUsageTime, weeklyUsageFile, 0)
-	end if
-on error err
-	writeFile("Weekly reset error: " & err, logFile, 1)
-end try
+on main()
+    -- read hour:minute from the config file
+    set dataStorageDirectory    to  configWithDefault("dataDir", "/opt/minecraft-monitor/data") 
+    set weeklyUsageLimit        to  configWithDefault("weeklyMax", "05:00") & ":00"
+    set dailyUsageLimit         to  configWithDefault("dailyMax", "01:00") & ":00"
 
-set dailyUsageTime to readFileOrDefault(dailyUsageFile, dailyUsageTime)
-set weeklyUsageTime to readFileOrDefault(weeklyUsageFile, weeklyUsageTime)
+    set dailyUsageFile  to dataStorageDirectory & "/mc-daily-usage.txt"
+    set weeklyUsageFile to dataStorageDirectory & "/mc-weekly-usage.txt"
+    set logFile         to dataStorageDirectory & "/mc-usage-log.txt"
+    
+    do shell script "mkdir -p " & dataStorageDirectory
+    writeFile("", logFile, 0)
 
-my updateStatusItem("Minecraft Today: " & dailyUsageTime & " Week: " & weeklyUsageTime)
+    -- Reset daily usage file if the day changed
+    try
+        tell application "System Events" to set fileDate to creation date of file dailyUsageFile
+        set fileDateString to formatDate(fileDate)
+        set currentDateString to formatDate(current date)
+        if fileDateString ≠ currentDateString then
+            writeFile("Reset daily usage: " & fileDateString & " ≠ " & currentDateString, logFile, 1)
+            do shell script "rm -f " & quoted form of dailyUsageFile
+            writeFile(dailyUsageTime, dailyUsageFile, 0)
+        end if
+    on error err
+        writeFile("Daily reset error: " & err, logFile, 1)
+    end try
 
-repeat
-	tell application "System Events"
-		set activeProcess to name of first process whose frontmost is true
-	end tell
+    -- Reset weekly usage file if week changed
+    try
+        tell application "System Events" to set fileDate to creation date of file weeklyUsageFile
+        set fileWeekNumber to weekNumber(fileDate)
+        set currentWeekNumber to (do shell script "date +%W") as integer
+        if fileWeekNumber ≠ currentWeekNumber then
+            writeFile("Reset weekly usage: Week " & fileWeekNumber & " ≠ " & currentWeekNumber, logFile, 1)
+            do shell script "rm -f " & quoted form of weeklyUsageFile
+            writeFile(weeklyUsageTime, weeklyUsageFile, 0)
+        end if
+    on error err
+        writeFile("Weekly reset error: " & err, logFile, 1)
+    end try
 
-	if activeProcess contains "java" or activeProcess contains monitoredProcess then
-		set processDetails to (do shell script "pgrep -lf " & quoted form of processGrepPattern)
-		if processDetails ≠ "" then
-			set dailyUsageTime to incrementTime(dailyUsageFile, dailyUsageTime, interval)
-			set weeklyUsageTime to incrementTime(weeklyUsageFile, weeklyUsageTime, interval)
+    set dailyUsageTime to readFileOrDefault(dailyUsageFile, dailyUsageTime)
+    set weeklyUsageTime to readFileOrDefault(weeklyUsageFile, weeklyUsageTime)
 
-			my updateStatusItem("Minecraft Today: " & dailyUsageTime & " Week: " & weeklyUsageTime)
+    my updateStatusItem("Minecraft Today: " & dailyUsageTime & " Week: " & weeklyUsageTime)
 
-			if weeklyUsageTime > weeklyUsageLimit or dailyUsageTime > dailyUsageLimit then
-				try
-					do shell script "pgrep -f " & quoted form of processGrepPattern & " | xargs kill"
-				end try
-			end if
-		end if
-	end if
+    repeat
+        tell application "System Events"
+            set activeProcess to name of first process whose frontmost is true
+        end tell
 
-	delay interval
-end repeat
+        if activeProcess contains "java" or activeProcess contains monitoredProcess then
+            set processDetails to (do shell script "pgrep -lf " & quoted form of processGrepPattern)
+            if processDetails ≠ "" then
+                set dailyUsageTime to incrementTime(dailyUsageFile, dailyUsageTime, interval)
+                set weeklyUsageTime to incrementTime(weeklyUsageFile, weeklyUsageTime, interval)
+
+                my updateStatusItem("Minecraft Today: " & dailyUsageTime & " Week: " & weeklyUsageTime)
+
+                if weeklyUsageTime > weeklyUsageLimit or dailyUsageTime > dailyUsageLimit then
+                    try
+                        do shell script "pgrep -f " & quoted form of processGrepPattern & " | xargs kill"
+                    end try
+                end if
+            end if
+        end if
+
+        delay interval
+    end repeat
+end main
 
 on updateStatusItem(statusText)
 	try
@@ -121,3 +137,32 @@ on timeToSeconds(timeString)
 	return (hrs as integer) * 3600 + (mins as integer) * 60 + (secs as integer)
 end timeToSeconds
 
+
+on secondsToTime(totalSecs)
+       set hrs to totalSecs div 3600
+       set mins to (totalSecs mod 3600) div 60
+       set secs to totalSecs mod 60
+       return pad(hrs) & ":" & pad(mins) & ":" & pad(secs)
+end secondsToTime
+
+on pad(num)
+       if num < 10 then return "0" & num
+       return num as string
+end pad
+
+on formatDate(aDate)
+       return ((year of aDate) as string) & pad(month of aDate as integer) & pad(day of aDate)
+end formatDate
+
+on weekNumber(aDate)
+       return (do shell script "date -jf '%Y-%m-%d' '" & (year of aDate) & "-" & pad(month of aDate as integer) & "-" & pad(day of aDate) & "' '+%W'") as integer
+end weekNumber
+
+on configWithDefault(key, defaultValue)
+    -- PlistBuddy could fail if the value does not exist, fall back to default
+    try
+        return do shell script "/usr/libexec/PlistBuddy -c 'Print " & key & "' " & quoted form of plistPath
+    on error
+        return defaultValue
+    end try
+end configWithDefault

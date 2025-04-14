@@ -1,33 +1,42 @@
 # minecraft-monitor
-Monitor screen time on macOS of Minecraft Java version
+> Monitor screen time on macOS of Minecraft Java version
 
-This is a straight up copy of "jhopgei"'s Applescript shared on the
+This started as a straight up copy of "jhopgei"'s Applescript shared on the
 [Mojang bug tracker (MCL-14705)](https://bugs.mojang.com/browse/MCL/issues/MCL-14705).
-I asked ChatGPT to translate the field names into English and made the user home folder 
-irrespective of the current user (it was basically hardcoded to `/Users/jhopgei`).
+I asked ChatGPT to translate the field names into English and basically 
+worked to make it easily installable and configurable without 
+actually touching the code.
 
-I also made the script uncompiled, meaning it is simple to view and edit with a 
-simple text editor, and of course, easily tracked in Git.
+I also made the script that is passed around uncompiled, meaning it is 
+simple to view and edit with a simple text editor, and of course, easily tracked in Git.
+I still compile it at install time.
+
 
 # Installation
-You can customise this as you want, for instance changing the paths 
-to avoid cluttering your home directory. Just remember to update
-all the other paths.
+![download zip](./screenshot-download.png)
 
-## Copy the script to your home directory
-- Open [the raw script](https://raw.githubusercontent.com/fatso83/minecraft-monitor/refs/heads/main/minecraft-monitor.applescript)
-- Save the content to your home directory (Cmd-S on a Mac will prompt you where to save the file)
+## 1. Download the files
+Most non-techies should just download the files as a zip-file and unzip it in `~/Downloads`. To unzip, just double-click the file once the download has finished. The ones that are well versed in Git can just clone the repo.
 
-## Script to put in the crontab
-Assuming you put the script in your home directory you would typically 
-have a script like this that you can put whereever you like, but for simplicity
-just put it in the home directory (unless you know what you are doing):
+## 2. Run the install script
+Now you need to navigate to the folder in the `Terminal.app`. If you have opened the Terminal app, you will typically now type the following:
 
 ```bash
-#!/usr/bin/env bash
-NAME=minecraft-monitor.applescript
-
-if ! pgrep -f "osascript.*${NAME}" >/dev/null; then
-    osascript "$HOME/${NAME}" &
-fi
+cd ~/Downloads/minecraft-monitor-main
+./scripts/install.sh
 ```
+
+That's it!
+
+## 3. Customise the settings
+You can see the basic settings in the file `config.plist`, which you can open in any text editor. Example:
+```xml
+    <!-- hour:minutes -->
+    <key>weeklyMax</key>
+    <string>5:00</string>
+
+    <!-- hour:minutes -->
+    <key>dailyMax</key>
+    <string>1:00</string>
+```
+Just change the values as you see fit. This is what I found right for my 7 year old. Once you feel this is right, just re-run `./scripts/install.sh`.
