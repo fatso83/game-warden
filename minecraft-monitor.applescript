@@ -66,10 +66,13 @@ on main()
         writeFile("Weekly reset error: " & err, logFile, 1)
     end try
 
-    set dailyUsageTime to readFileOrDefault(dailyUsageFile, dailyUsageTime)
-    set weeklyUsageTime to readFileOrDefault(weeklyUsageFile, weeklyUsageTime)
-
-    my updateStatusItem("Minecraft Today: " & dailyUsageTime & " Week: " & weeklyUsageTime)
+    local startDate
+    local processDetails
+    local elapsed
+    local now
+    local initialDailySeconds
+    local initialWeeklySeconds
+    set startDate to missing value
 
     repeat
         tell application "System Events"
@@ -77,19 +80,40 @@ on main()
         end tell
 
         if activeProcess contains "java" or activeProcess contains monitoredProcess then
+
             set processDetails to (do shell script "pgrep -lf " & quoted form of processGrepPattern)
             if processDetails ≠ "" then
-                set dailyUsageTime to incrementTime(dailyUsageFile, dailyUsageTime, interval)
-                set weeklyUsageTime to incrementTime(weeklyUsageFile, weeklyUsageTime, interval)
+
+                if startDate is missing value then
+                    -- Mark start of monitoring session
+                    set startDate to current date
+
+                    -- Read initial times from file
+                    set initialDailySeconds to timeToSeconds(readFileOrDefault(dailyUsageFile, "00:00:00"))
+                    set initialWeeklySeconds to timeToSeconds(readFileOrDefault(weeklyUsageFile, "00:00:00"))
+                end if
+
+                -- Get current time and calculate elapsed
+                set now to current date
+                set elapsed to now - startDate -- seconds
+
+                set currentDaily to initialDailySeconds + elapsed
+                set currentWeekly to initialWeeklySeconds + elapsed
+                set dailyUsageTime to secondsToTime(currentDaily)
+
+                writeFile(dailyUsageTime, dailyUsageFile, 0)
+                writeFile(secondsToTime(currentWeekly), weeklyUsageFile, 0)
 
                 my updateStatusItem("Minecraft Today: " & dailyUsageTime & " Week: " & weeklyUsageTime)
 
-                if weeklyUsageTime > weeklyUsageLimit or dailyUsageTime > dailyUsageLimit then
+                if currentDaily > timeToSeconds(dailyUsageLimit) or currentWeekly > timeToSeconds(weeklyUsageLimit) then
                     try
                         do shell script "pgrep -f " & quoted form of processGrepPattern & " | xargs kill"
                     end try
                 end if
             end if
+        else
+            set startDate to missing value
         end if
 
         delay interval
@@ -122,13 +146,6 @@ on writeFile(textContent, filePath, eofMode)
 		do shell script "echo " & quoted form of textContent & " >> " & quoted form of filePath
 	end if
 end writeFile
-
-on incrementTime(filePath, currentTime, incrementSeconds)
-	set newTimeSecs to timeToSeconds(currentTime) + incrementSeconds
-	set newTimeString to secondsToTime(newTimeSecs)
-	writeFile(newTimeString, filePath, 0)
-	return newTimeString
-end incrementTime
 
 on timeToSeconds(timeString)
 	set AppleScript's text item delimiters to ":"
