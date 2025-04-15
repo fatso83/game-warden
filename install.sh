@@ -7,10 +7,8 @@ main(){
     trap "cleanup" EXIT 
 
     # kill existing process
-    PID=$(pgrep -f "osascript.*minecraft-monitor") 
-    if [[ "$PID" != "" ]]; then
-        sudo kill "$PID"
-    fi
+    pgrep -f "osascript.*minecraft-monitor" \
+        | sudo xargs kill
 
     install_scripts
     install_crontab
