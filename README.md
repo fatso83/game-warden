@@ -41,11 +41,11 @@ Just change the values as you see fit. This is what I found right for my 7 year 
 
 # Acknowledgements
 
-This started as a straight up copy of "jhopgei"'s Applescript shared on the
+This started as a straight up copy of user "jhopgei"'s (Jürgen, last name unknown) Applescript shared on the
 [Mojang bug tracker (MCL-14705)](https://bugs.mojang.com/browse/MCL/issues/MCL-14705).
-I asked ChatGPT to translate the field names into English and basically 
-worked to make it easily installable and configurable without 
-actually touching the code.
+I then asked ChatGPT to translate the field names into English. Following that, I basically 
+I made changes to make it more easily installable, distributable and configurable
+by moving all user configurable bits out of the AppleScript code.
 
 I also made the script that is passed around uncompiled, meaning it is 
 simple to view and edit with a simple text editor, and of course, easily tracked in Git.
