@@ -46,14 +46,20 @@ on main()
 
     do shell script "mkdir -p " & quoted form of dataStorageDirectory
 
-    log("main: finished init")
     log("dataStorageDirectory=" & dataStorageDirectory)
+    log("Trigger dialogue that will ask for Permission to use System Events.")
+    tell application "System Events"
+        key code 53 -- Escape
+    end tell
+
 
     local processDetails, now
     local warnTimeDaily, warnTimeWeekly
     set timeBookkeeping's startOfCurrentSession to missing value
 
+    log("Loading saved records")
     loadTimeBookkeeping()
+    log("main: finished init .. starting main loop")
 
     repeat
         --log("has shown warning: " & hasShownWarning)
@@ -84,14 +90,19 @@ on main()
                 set timeBookkeeping's startOfCurrentSession to current date
                 saveTimeBookkeeping()
 
-                if currentDaily() > dailyUsageLimit or currentWeekly() > weeklyUsageLimit then
+                -- hard and brutal exit
+                if currentDaily() > (dailyUsageLimit+5) or currentWeekly() > (weeklyUsageLimit + 5) then
                     try
                         log("Killing Minecraft")
                         do shell script "pgrep -f " & quoted form of processGrepPattern & " | xargs kill"
+                        display dialog "Timeout!" buttons {"OK"} default button "OK"
                     end try
+                -- soft and graceful exit
+                else if currentDaily() > dailyUsageLimit or currentWeekly() > weeklyUsageLimit then
+                    gracefulExit()
+                else
+                    showWarningIfCloseToThreshould()
                 end if
-
-                showWarningIfCloseToThreshould()
 
             end if
         end if
@@ -248,3 +259,41 @@ on currentWeekly()
     return timeBookkeeping's initialWeeklySeconds + elapsed()
 end currentWeekly
 
+on gracefulExit()
+        log("Gracefully exiting Minecraft")
+        tell application "System Events"
+
+            -- Assumption: play screen
+            key code 53 -- Escape
+            delay 0.2
+
+            repeat 5 times
+                key code 125 -- Arrow down
+                delay 0.1
+            end repeat
+
+            -- Save and go the main menu
+            key code 36 -- Enter
+            delay 0.5
+
+            -- If the assumption was wrong, and we were at the main screen
+            -- and now ended up at some sub-menu,
+            -- we can get back to the main screen by just tapping Esc again
+            key code 53 -- Escape
+            delay 0.2
+
+            -- Assumption: we are at main screen
+            repeat 3 times
+                key code 125 -- Arrow down
+                delay 0.1
+            end repeat
+
+            key code 124 -- Arrow right
+            delay 0.1
+
+            -- Quits!
+            key code 36 -- Enter
+
+            display dialog "Timeout!" buttons {"OK"} default button "OK"
+        end tell
+end gracefulExit
