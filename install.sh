@@ -1,40 +1,87 @@
 #!/usr/bin/env bash
-# Install the monitoring script
+set -euo pipefail
 
-INSTALL_DIR="/opt/minecraft-monitor"
+PLIST_TEMPLATE="./no.kopseng.minecraft-monitor.plist"
+SCRIPT_SOURCE="./minecraft-monitor.applescript"
+COMPILED_NAME="minecraft-monitor.scpt"
+CONFIG_SOURCE="./config.plist"
+PLIST_ID="no.kopseng.minecraft-monitor"
 
-main(){
-    trap "cleanup" EXIT 
+main() {
+    echo "📋 Available users:"
+    list_mac_users
 
-    # kill existing process
-    pgrep -f "osascript.*minecraft-monitor" \
-        | sudo xargs kill
+    echo
+    read -rp "👤 Enter comma-separated list of usernames to install for: " USER_INPUT
+    IFS=',' read -ra USERS <<< "$USER_INPUT"
 
-    install_scripts
-    install_crontab
+    for user in "${USERS[@]}"; do
+        user=$(echo "$user" | xargs)
+        install_for_user "$user"
+    done
+
+    echo "✅ Installation complete."
 }
 
-cleanup(){
-    rm root-crontab.tmp
+list_mac_users() {
+    dscl . list /Users | while read -r user; do
+        if [[ -d "/Users/$user" ]] && [[ "$user" != "_"* ]]; then
+            echo "$user"
+        fi
+    done
 }
 
-install_scripts(){
-    sudo mkdir -p "$INSTALL_DIR"
-    sudo cp -f ./config.plist keep-alive.sh  "$INSTALL_DIR/"
-    sudo osacompile -o "$INSTALL_DIR/minecraft-monitor.scpt" minecraft-monitor.applescript 
-    echo "Scripts installed to $INSTALL_DIR"
-}
+install_for_user() {
+    local user=$1
+    local home="/Users/$user"
+    local app_support="$home/Library/Application Support/minecraft-monitor"
+    local launch_agents="$home/Library/LaunchAgents"
+    local plist_dest="$launch_agents/$PLIST_ID.plist"
 
-install_crontab(){
-    # Install crontab
-    cat > root-crontab.tmp << EOF
-* * * * *  $INSTALL_DIR/keep-alive.sh
+    if [[ ! -d "$home" ]]; then
+        echo "⚠️  Home directory for $user not found: $home"
+        return
+    fi
+
+    echo "📦 Installing for $user..."
+
+    sudo -u "$user" mkdir -p "$app_support"
+    sudo -u "$user" mkdir -p "$launch_agents"
+
+    # Compile script
+    osacompile -o "$app_support/$COMPILED_NAME" "$SCRIPT_SOURCE"
+    cp -f "$CONFIG_SOURCE" "$app_support/"
+
+    # Generate plist with correct paths
+    cat > "$plist_dest" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>$PLIST_ID</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/osascript</string>
+        <string>$app_support/$COMPILED_NAME</string>
+        <string>$app_support/$CONFIG_SOURCE</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>$app_support/minecraft-monitor.log</string>
+    <key>StandardErrorPath</key>
+    <string>$app_support/minecraft-monitor.err</string>
+</dict>
+</plist>
 EOF
 
-    sudo sudo crontab root-crontab.tmp
-
-    echo "Installed the following crontab to root"
-    cat root-crontab.tmp
+    chown "$user" "$plist_dest"
+    launchctl bootout gui/"$(id -u "$user")" "$plist_dest" 2>/dev/null || true
+    launchctl bootstrap gui/"$(id -u "$user")" "$plist_dest"
+    echo "✅ Installed and loaded agent for $user"
 }
 
 main

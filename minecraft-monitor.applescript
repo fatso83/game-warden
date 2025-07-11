@@ -35,7 +35,7 @@ on run argv
 end run
 
 on main()
-    set dataStorageDirectory to configWithDefault("dataDir", (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor/")
+    set dataStorageDirectory to (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor/"
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     set dailyUsageLimit to timeToSeconds(configWithDefault("dailyMax", "01:00") & ":00")
 
@@ -45,6 +45,7 @@ on main()
     do shell script "mkdir -p " & quoted form of dataStorageDirectory
 
     log("main: finished init")
+    log("dataStorageDirectory=" & dataStorageDirectory)
 
     local processDetails, now
     local warnTimeDaily, warnTimeWeekly
