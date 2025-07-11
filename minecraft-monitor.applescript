@@ -29,7 +29,7 @@ on run argv
         do shell script ">&2 echo 'Error: Missing required argument (path to config.plist)'; exit 100"
     else
         set plistPath to item 1 of argv
-        do shell script "[ -e " & plistPath & " ] || (echo 'No such file: " & plistPath & "' && exit 200)"
+        do shell script "[ -e " & quoted form of plistPath & " ] || (echo 'No such file: " & plistPath & "' && exit 200)"
         main()
     end if
 end run
