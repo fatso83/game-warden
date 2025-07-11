@@ -15,8 +15,16 @@ main() {
     read -rp "👤 Enter comma-separated list of usernames to install for: " USER_INPUT
     IFS=',' read -ra USERS <<< "$USER_INPUT"
 
+    if [[ $USER != "root" ]]; then
+        echo "NOT SUDO!"
+        echo "You are not running the script as root. Trying to install the script for anyone but yourself will fail."
+        echo "If you want to install it for another user, run it with 'sudo'"
+        echo
+    fi
+
     for user in "${USERS[@]}"; do
         user=$(echo "$user" | xargs)
+
         install_for_user "$user"
     done
 
