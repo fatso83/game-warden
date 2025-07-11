@@ -78,6 +78,8 @@ install_for_user() {
     </array>
     <key>RunAtLoad</key>
     <true/>
+    <key>KeepAlive</key>
+    <true/>
     <key>StandardErrorPath</key>
     <string>$app_support/error.log</string>
     <key>StandardOutPath</key>
