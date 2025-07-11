@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- This file is an example file for use while developing and testing.
+<!-- This file is used while developing and testing.
 The actual config is generated at install time -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Where you want all files containing messages and time to be logged -->
-    <key>dataDir</key>
-    <string>/opt/minecraft-monitor/data</string>
 
     <!-- hour:minutes -->
     <key>weeklyMax</key>
@@ -17,8 +14,8 @@ The actual config is generated at install time -->
     <key>dailyMax</key>
     <string>1:00</string>
 
-    <key>customExitMessage</key>
-    <string>Lagre og avslutt Minecraft umiddelbart!</string>
+    <!--<key>customExitMessage</key>-->
+    <!--<string>Lagre og avslutt Minecraft umiddelbart!</string>-->
 
 
 </dict>
