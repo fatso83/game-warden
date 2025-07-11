@@ -15,6 +15,7 @@ property dailyUsageLimit    : missing value
 property plistPath          : missing value
 property hasShownWarning    : false
 property usageStateFile     : missing value
+property exitMessage        : missing value
 
 -- Record to store usage state
 script timeBookkeeping
@@ -38,6 +39,7 @@ on main()
     set dataStorageDirectory to (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor/"
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     set dailyUsageLimit to timeToSeconds(configWithDefault("dailyMax", "01:00") & ":00")
+    set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
 
     set usageStateFile to dataStorageDirectory & "/mc-usage-state.txt"
     set logFile to dataStorageDirectory & "/mc-log.txt"
@@ -101,23 +103,20 @@ end main
 on showWarningIfCloseToThreshould()
     if not hasShownWarning then
 
-        --log("timeBookkeeping: daily=" & timeBookkeeping's initialDailySeconds & ", weekly=" & timeBookkeeping's initialWeeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
+        log("timeBookkeeping: daily=" & timeBookkeeping's initialDailySeconds & ", weekly=" & timeBookkeeping's initialWeeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
         local secondsBeforeWarning
         set secondsBeforeWarning to 60
 
-
-        log("warnTimeDaily = " & warnTimeDaily)
-        log("warnTimeWeekly = " & warnTimeWeekly)
         log("dailyUsageLimit= " & dailyUsageLimit)
         log("weeklyUsageLimit= " & weeklyUsageLimit)
 
         if currentDaily() > (dailyUsageLimit - secondsBeforeWarning) or currentWeekly() > (weeklyUsageLimit - secondsBeforeWarning) then
             log("showing warning")
+            set hasShownWarning to true
             tell application "Finder" to activate
             delay 0.5
-            display dialog "5 minutes left in Minecraft. Click OK to continue." buttons {"OK"} default button "OK"
+            display dialog exitMessage buttons {"OK"} default button "OK"
         end if
-        set hasShownWarning to true
     end if
 end showWarningIfCloseToThreshould
 
