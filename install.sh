@@ -8,19 +8,21 @@ CONFIG_SOURCE="./config.plist"
 PLIST_ID="no.kopseng.minecraft-monitor"
 
 main() {
+
+    if [[ $USER != "root" ]]; then
+        echo "WARNING: Not running as sudo!"
+        echo
+        echo "You are not running the script as root. Trying to install the script for anyone but yourself will fail."
+        echo "If you want to install it for another user, try prefixing the install command with 'sudo'"
+        echo
+    fi
+
     echo "📋 Available users:"
     list_mac_users
 
     echo
     read -rp "👤 Enter comma-separated list of usernames to install for: " USER_INPUT
     IFS=',' read -ra USERS <<< "$USER_INPUT"
-
-    if [[ $USER != "root" ]]; then
-        echo "NOT SUDO!"
-        echo "You are not running the script as root. Trying to install the script for anyone but yourself will fail."
-        echo "If you want to install it for another user, run it with 'sudo'"
-        echo
-    fi
 
     for user in "${USERS[@]}"; do
         user=$(echo "$user" | xargs)
