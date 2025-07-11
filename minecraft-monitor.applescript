@@ -99,10 +99,12 @@ on main()
 end main
 
 on showWarningIfCloseToThreshould()
-    secondsBeforeWarning = 60
     if not hasShownWarning then
 
         --log("timeBookkeeping: daily=" & timeBookkeeping's initialDailySeconds & ", weekly=" & timeBookkeeping's initialWeeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
+        local secondsBeforeWarning
+        set secondsBeforeWarning to 60
+
 
         log("warnTimeDaily = " & warnTimeDaily)
         log("warnTimeWeekly = " & warnTimeWeekly)
