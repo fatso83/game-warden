@@ -56,7 +56,7 @@ on main()
     loadTimeBookkeeping()
 
     repeat
-        log("has shown warning: " & hasShownWarning)
+        --log("has shown warning: " & hasShownWarning)
         tell application "System Events"
             set activeProcess to name of first process whose frontmost is true
         end tell
@@ -103,12 +103,12 @@ end main
 on showWarningIfCloseToThreshould()
     if not hasShownWarning then
 
-        log("timeBookkeeping: daily=" & timeBookkeeping's initialDailySeconds & ", weekly=" & timeBookkeeping's initialWeeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
+        --log("timeBookkeeping: daily=" & timeBookkeeping's initialDailySeconds & ", weekly=" & timeBookkeeping's initialWeeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
         local secondsBeforeWarning
         set secondsBeforeWarning to 60
 
-        log("dailyUsageLimit= " & dailyUsageLimit)
-        log("weeklyUsageLimit= " & weeklyUsageLimit)
+        --log("dailyUsageLimit= " & dailyUsageLimit)
+        --log("weeklyUsageLimit= " & weeklyUsageLimit)
 
         if currentDaily() > (dailyUsageLimit - secondsBeforeWarning) or currentWeekly() > (weeklyUsageLimit - secondsBeforeWarning) then
             log("showing warning")
@@ -204,7 +204,7 @@ on resetDbCountersIfNewDayOrWeek()
 end resetDbCountersIfNewDayOrWeek
 
 on resetStateIfRequired()
-    log("Checking any state needs resetting")
+    --log("Checking any state needs resetting")
     resetDbCountersIfNewDayOrWeek()
 
     if timeBookkeeping's initialWeeklySeconds is 0 or timeBookkeeping's initialWeeklySeconds is 0 then
