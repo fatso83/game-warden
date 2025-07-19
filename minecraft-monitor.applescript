@@ -7,7 +7,6 @@ use scripting additions
 
 property statusItem         : missing value
 property interval           : 1.0
-property monitoredProcess   : "minecraft"
 property processGrepPattern : "java.*[m]inecraft"
 property logFile            : missing value
 property weeklyUsageLimit   : missing value
@@ -67,7 +66,8 @@ on main()
             set activeProcess to name of first process whose frontmost is true
         end tell
 
-        set activeProcessSeemsLikeMatch to (activeProcess contains "java" or activeProcess contains monitoredProcess)
+        set processDetails to (do shell script "pgrep -lf " & quoted form of processGrepPattern)
+        set activeProcessSeemsLikeMatch to (processDetails contains activeProcess)
 
         if not activeProcessSeemsLikeMatch then
             if timeBookkeeping's startOfCurrentSession is not missing value then
@@ -75,8 +75,6 @@ on main()
             end if
             set timeBookkeeping's startOfCurrentSession to missing value
         else
-            set processDetails to (do shell script "pgrep -lf " & quoted form of processGrepPattern)
-
             if processDetails is not "" then
                 resetStateIfRequired()
 
