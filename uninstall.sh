@@ -36,19 +36,26 @@ uninstall_for_user() {
     local launch_agents="$home/Library/LaunchAgents"
     local agent_path="$launch_agents/$PLIST_ID.plist"
 
+    if ! sudo -u "$user" test -e "$agent_path"; then
+        echo "No existing agent found for user $user"
+        return
+    fi
+
     echo "🧹 Uninstalling for $user..."
 
     launchctl bootout gui/"$(id -u "$user")" "$agent_path" 2>/dev/null || true
     rm -f "$agent_path"
 
     rm -f "$app_support/$COMPILED_NAME" \
-          "$app_support/$CONFIG_NAME" \
-          "$app_support/minecraft-monitor.log" \
-          "$app_support/minecraft-monitor.err" \
-          "$app_support/mc-usage-state.txt"
+          "$app_support/$CONFIG_NAME"
 
-    rmdir "$app_support" 2>/dev/null || true
-    echo "✅ Cleaned up for $user"
+    # Leaving the log files and state, as we we might uninstall as part of upgrading to a newer version
+          #"$app_support/minecraft-monitor.log" \
+          #"$app_support/minecraft-monitor.err" \
+          #"$app_support/mc-usage-state.txt"
+    # rmdir "$app_support" 2>/dev/null || true
+
+    echo "✅ Cleaned up for $user (leaving some log files and state file)"
 }
 
-main
+main "$@"
