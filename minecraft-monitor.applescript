@@ -7,7 +7,6 @@ use scripting additions
 
 property statusItem         : missing value
 property interval           : 1.0
-property processGrepPattern : "java.*[m]inecraft"
 property logFile            : missing value
 property weeklyUsageLimit   : missing value
 property dailyUsageLimit    : missing value
@@ -60,14 +59,25 @@ on main()
     loadTimeBookkeeping()
     log("main: finished init .. starting main loop")
 
+    set processPatterns to configArrayWithDefault("processPatterns", {"java.*[m]inecraft"})
     repeat
         --log("has shown warning: " & hasShownWarning)
         tell application "System Events"
             set activeProcess to name of first process whose frontmost is true
         end tell
 
-        set processDetails to (do shell script "pgrep -lf " & quoted form of processGrepPattern)
-        set activeProcessSeemsLikeMatch to (processDetails contains activeProcess)
+        local matchedPattern
+        set activeProcessSeemsLikeMatch to false
+        repeat with pattern in processPatterns
+            try
+                set processDetails to (do shell script "pgrep -lf " & quoted form of pattern)
+                if processDetails contains activeProcess then
+                    set activeProcessSeemsLikeMatch to true
+                    set matchedPattern to pattern
+                    exit repeat
+                end if
+            end try
+        end repeat
 
         if not activeProcessSeemsLikeMatch then
             if timeBookkeeping's startOfCurrentSession is not missing value then
@@ -92,7 +102,7 @@ on main()
                 if currentDaily() > (dailyUsageLimit+5) or currentWeekly() > (weeklyUsageLimit + 5) then
                     try
                         log("Killing Minecraft")
-                        do shell script "pgrep -f " & quoted form of processGrepPattern & " | xargs kill"
+                        do shell script "pgrep -f " & quoted form of matchedPattern & " | xargs kill"
                         display dialog "Timeout!" buttons {"OK"} default button "OK"
                     end try
                 -- soft and graceful exit
@@ -188,6 +198,25 @@ on configWithDefault(key, defaultValue)
         return defaultValue
     end try
 end configWithDefault
+
+on configArrayWithDefault(key, defaultList)
+    set arrayIndex to 0
+    set resultList to {}
+    repeat
+        try
+            set value to do shell script "/usr/libexec/PlistBuddy -c 'Print " & key & ":" & arrayIndex & "' " & quoted form of plistPath
+            set end of resultList to value
+            set arrayIndex to arrayIndex + 1
+        on error
+            exit repeat
+        end try
+    end repeat
+    if resultList is {} then
+        return defaultList
+    else
+        return resultList
+    end if
+end configArrayWithDefault
 
 on resetDbCountersIfNewDayOrWeek()
     try

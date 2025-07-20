@@ -5,6 +5,11 @@ The actual config is generated at install time -->
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>processPatterns</key>
+    <array>
+      <string>java.*[m]inecraft</string>
+      <string>steamapps</string>
+    </array>
 
     <!-- hour:minutes -->
     <key>weeklyMax</key>
