@@ -36,7 +36,10 @@ end run
 on main()
     set dataStorageDirectory to (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor/"
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
-    set dailyUsageLimit to timeToSeconds(configWithDefault("dailyMax", "01:00") & ":00")
+
+    -- Ensure English days of the week to match the .plist keys.
+    set currentDay to do shell script "LC_ALL=en_US.UTF-8 date +%A"
+    set dailyUsageLimit to timeToSeconds(configWithDefault(currentDay, "01:00") & ":00")
     set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
 
     set usageStateFile to dataStorageDirectory & "/mc-usage-state.txt"
