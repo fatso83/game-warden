@@ -60,9 +60,9 @@ on main()
     set dailyUsageLimit to timeToSeconds(configWithDefault("dailyMax", "01:00") & ":00")
     set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
 
-    set usageStateFile to appDir & "/mc-usage-state.txt"
+    set usageStateFile to appDir & "/usage-state.dat"
 
-    local currentUser
+    local currentUser, warnTimeDaily, warnTimeWeekly, matchedProcess
     set currentUser to do shell script "whoami"
     debugLog("script running as user: " & currentUser)
     debugLog("appDir: " & appDir)
@@ -75,10 +75,8 @@ on main()
     end if
 
 
-    local now
-    local warnTimeDaily, warnTimeWeekly, patternsList
     set timeBookkeeping's startOfCurrentSession to missing value
-    set patternsList to readProcessPatterns(plistPath)
+    set patternRecords to readProcessPatterns(plistPath)
 
     infoLog("Loading saved records")
     loadTimeBookkeeping()
@@ -104,13 +102,17 @@ on main()
         end tell
 
         debugLog("Checking for process pattern")
-        repeat with pat in patternsList
+        repeat with r in patternRecords
+            traceLog("Key: " & (key of r) & " -> Pattern: " & (pattern of r))
+            set pattern to pattern of r
+
             -- If the shell exits with a non-zero code, it did not find the process
             -- It will also throw an error, which we catch and ignore
             try
-                do shell script "ps -f " & processId & " | grep -E " & quoted form of pat
+                do shell script "ps -f " & processId & " | grep -E " & quoted form of pattern
                 set activeProcessHasMatch to true
-                debugLog("Matched on process pattern: " & pat)
+                debugLog("Matched on process pattern: " & pattern)
+                set matchedProcess to {name: appName, pid: processId, patternKey: key of r, pattern: pattern of r}
                 exit repeat
             end try
         end repeat
@@ -146,9 +148,9 @@ on main()
                 end try
             -- soft and graceful exit
             else if totalDailySeconds() > dailyUsageLimit or totalWeeklySeconds() > weeklyUsageLimit then
-                gracefulExit()
+                gracefulExit(matchedProcess)
             else
-                showWarningIfCloseToThreshould()
+                showWarningIfCloseToThreshold()
             end if
         end if
 
@@ -156,7 +158,7 @@ on main()
     end repeat
 end main
 
-on showWarningIfCloseToThreshould()
+on showWarningIfCloseToThreshold()
     if not hasShownWarning then
 
         traceLog("timeBookkeeping: daily=" & timeBookkeeping's dailySeconds & ", weekly=" & timeBookkeeping's weeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
@@ -174,7 +176,7 @@ on showWarningIfCloseToThreshould()
             display dialog exitMessage buttons {"OK"} default button "OK"
         end if
     end if
-end showWarningIfCloseToThreshould
+end showWarningIfCloseToThreshold
 
 on readFileOrDefault(filePath, defaultValue)
     try
@@ -215,7 +217,7 @@ end log
 
 on infoLog(textContent)
     if currentLogLevel <= INFO of logLevels then
-        doLog("INFO: " & textContent)
+        doLog("INFO:  " & textContent)
     end if
 end log
 
@@ -368,12 +370,8 @@ on processWithArgumentsMatchesPattern(pid, pattern)
     return false
 end processWithArgumentsMatchesPattern
 
-on processIsMinecraft(pid)
-    return processWithArgumentsMatchesPattern(pid, "java.*[m]inecraft")
-end processIsMinecraft
-
-on gracefulExit(pid)
-    if processIsMinecraft(pid) then
+on gracefulExit(matchedProcess)
+    if patternKey of matchedProcess is "minecraft" then
         infoLog("Gracefully exiting Minecraft")
         gracefulExitMinecraft()
     else
@@ -450,11 +448,22 @@ on ensureAutomationPermissions()
     end try
 end ensureAutomationPermissions
 
+-- Read the dictionary of key:pattern pairs
 -- Relies on 'use framework "Foundation"' to load it as an NSArray
 on readProcessPatterns(plistPath)
-    set dict to current application's NSDictionary's dictionaryWithContentsOfFile:plistPath
-    set patterns to dict's objectForKey:"processPatterns"
-    -- patterns is an NSArray of NSStrings
-    set result to patterns as list
-    return result  -- now an AppleScript list of strings
+    set rootDict to current application's NSDictionary's dictionaryWithContentsOfFile:plistPath
+    if rootDict = missing value then error "Could not read plist: " & plistPath
+
+    set patternsDict to rootDict's objectForKey:"processPatterns"
+    if patternsDict = missing value then return {}
+
+    set keysArray to patternsDict's allKeys()
+    set res to {}
+    repeat with k in keysArray
+        set kText to k as text
+        set patternText to (patternsDict's objectForKey:k) as text
+        set end of res to {key:kText, pattern:patternText}
+    end repeat
+    return res
 end readProcessPatterns
+

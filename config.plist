@@ -13,11 +13,13 @@
         <key>dailyMax</key>
         <string>1:00</string>
 
+        <!-- We can use the key to invoke special handling in the script based on the process -->
         <key>processPatterns</key>
-        <array>
-            <string>java.*[m]inecraft</string>
-            <string>steamapps</string>
-        </array>
+        <dict>
+            <key>minecraft</key><string>java.*[m]inecraft</string>
+            <key>steam-games</key><string>steamapps</string>
+        </dict>
+
 
         <!-- Totally optional if you want to customise the exit message in your own language, for instance -->
         <!-- This might be moved to language resource files, potentially-->
