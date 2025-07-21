@@ -5,24 +5,36 @@ use framework "Foundation"
 use framework "AppKit"
 use scripting additions
 
+-- log levels
+property logLevels : { TRACE: 0, DEBUG: 1, INFO: 2, WARN: 3 }
+property currentLogLevel : INFO of logLevels
+
 property statusItem         : missing value
 property interval           : 1.0
-property monitoredProcess   : "minecraft"
-property processGrepPattern : "java.*[m]inecraft"
-property logFile            : missing value
 property weeklyUsageLimit   : missing value
 property dailyUsageLimit    : missing value
 property plistPath          : missing value
 property hasShownWarning    : false
 property usageStateFile     : missing value
 property exitMessage        : missing value
+--property appDir             : POSIX path of (path to application support folder from user domain) & "minecraft-monitor"
+property appDir             : missing value --POSIX path of (path to application support folder from user domain) & "minecraft-monitor"
+property appender           : "stderr"
+--property appender           : "file"
 
 -- Record to store usage state
+-- Problems to keep an eye out for
+-- 1. Day shifts: reset time and need to make sure a long session crossing midnight is not counted on the next day
+-- 2. Week shifts: see above, but a long session crossing midnight _should_ be counted, just not if new week
+--
+-- Algo:
+-- To not lose recorded time, save the state to file every X seconds, in case the script exits
+-- current elapsed time is calculated based on start of session to avoid drift (as compared to incrementing using timers)
+-- on the end of each session, add the recorded session time to the total for the day
 script timeBookkeeping
-    property initialDailySeconds : 0
-    property initialWeeklySeconds : 0
+    property dailySeconds : 0
+    property weeklySeconds : 0
     property startOfCurrentSession : missing value
-    property elapsed : 0
 end script
 
 on run argv
@@ -36,74 +48,100 @@ on run argv
 end run
 
 on main()
-    set dataStorageDirectory to (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor/"
+    --set logLevels to { TRACE: 0, DEBUG: 1, INFO: 2, WARN: 3 }
+
+    set appDir             to (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor"
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     set dailyUsageLimit to timeToSeconds(configWithDefault("dailyMax", "01:00") & ":00")
     set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
 
-    set usageStateFile to dataStorageDirectory & "/mc-usage-state.txt"
-    set logFile to dataStorageDirectory & "/mc-log.txt"
+    set usageStateFile to appDir & "/mc-usage-state.txt"
 
-    do shell script "mkdir -p " & quoted form of dataStorageDirectory
+    local currentUser
+    set currentUser to do shell script "whoami"
+    debugLog("script running as user: " & currentUser)
+    debugLog("appDir: " & appDir)
 
-    log("dataStorageDirectory=" & dataStorageDirectory)
-    log("Trigger dialogue that will ask for Permission to use System Events.")
-    tell application "System Events"
-        key code 53 -- Escape
-    end tell
+    do shell script "mkdir -p " & quoted form of appDir
+
+    if not ensureAutomationPermissions() then
+        display dialog "You need to give access to 'System Events' in Settings > Privacy > Automation." buttons {"OK"} default button "OK"
+        error "Missing permission to access System Events"
+    end if
 
 
-    local processDetails, now
+    local now
     local warnTimeDaily, warnTimeWeekly
     set timeBookkeeping's startOfCurrentSession to missing value
 
-    log("Loading saved records")
+    infoLog("Loading saved records")
     loadTimeBookkeeping()
-    log("main: finished init .. starting main loop")
+    debugLog("main: finished init .. starting main loop")
 
     repeat
-        --log("has shown warning: " & hasShownWarning)
+        local activeProcessSeemsLikeMatch
+        set activeProcessSeemsLikeMatch to false
+
+        if shouldQuit() then
+            return
+        end if
+
+        traceLog("has shown warning: " & hasShownWarning)
         tell application "System Events"
-            set activeProcess to name of first process whose frontmost is true
+            set frontApp to first process whose frontmost is true
+            set processId to unix id of frontApp
+            local appName
+            set appName to (get name of frontApp)
+            my traceLog("appName: " & appName)
+            my traceLog("pid: " & (get unix id of frontApp))
+            my traceLog("bundle: " & (get bundle identifier of frontApp))
         end tell
 
-        set activeProcessSeemsLikeMatch to (activeProcess contains "java" or activeProcess contains monitoredProcess)
+        debugLog("Checking for process pattern")
+        try
+            -- If the shell exits with a non-zero code, it did not find the process
+            -- It will also throw an error, which we catch and ignore
+            --local processGrepPattern : "java.*[m]inecraft"
+            local processGrepPattern
+            set processGrepPattern to "java.*[m]inecraft"
+            do shell script "ps -f " & processId & " | grep " & quoted form of processGrepPattern
+            set activeProcessSeemsLikeMatch to true
+        end try
 
         if not activeProcessSeemsLikeMatch then
             if timeBookkeeping's startOfCurrentSession is not missing value then
-                log("No active Minecraft process in the foreground. Ending current session.")
+                infoLog("No monitored process in the foreground. Elapsed time: " & getCurrentSessionElapsed() )
             end if
-            set timeBookkeeping's startOfCurrentSession to missing value
-        else
-            set processDetails to (do shell script "pgrep -lf " & quoted form of processGrepPattern)
 
-            if processDetails is not "" then
-                resetStateIfRequired()
-
-                if timeBookkeeping's startOfCurrentSession is missing value then
-                    log("Minecraft process in the foreground. Starting new session.")
-                    set timeBookkeeping's startOfCurrentSession to current date
-                end if
-
-                set timeBookkeeping's initialDailySeconds to timeBookkeeping's initialDailySeconds + elapsed()
-                set timeBookkeeping's initialWeeklySeconds to timeBookkeeping's initialWeeklySeconds + elapsed()
-                set timeBookkeeping's startOfCurrentSession to current date
+            if hasStateChanged() then
+                updateStateAtSessionEnd()
                 saveTimeBookkeeping()
+            end if
+        else
+            resetStateIfRequired()
 
-                -- hard and brutal exit
-                if currentDaily() > (dailyUsageLimit+5) or currentWeekly() > (weeklyUsageLimit + 5) then
-                    try
-                        log("Killing Minecraft")
-                        do shell script "pgrep -f " & quoted form of processGrepPattern & " | xargs kill"
-                        display dialog "Timeout!" buttons {"OK"} default button "OK"
-                    end try
-                -- soft and graceful exit
-                else if currentDaily() > dailyUsageLimit or currentWeekly() > weeklyUsageLimit then
-                    gracefulExit()
-                else
-                    showWarningIfCloseToThreshould()
-                end if
+            if timeBookkeeping's startOfCurrentSession is missing value then
+                infoLog("Monitored process in the foreground.")
+                set timeBookkeeping's startOfCurrentSession to current date
+            end if
 
+            -- Save every few seconds
+            --if totalDailySeconds() mod 3 = 0 then
+                saveTimeBookkeeping()
+            --end if
+
+            -- hard and brutal exit
+            if totalDailySeconds() > (dailyUsageLimit+5) or totalWeeklySeconds() > (weeklyUsageLimit + 5) then
+                try
+                    infoLog("Killing Minecraft")
+                    do shell script "kill " & processId
+                    display dialog "Timeout!" buttons {"OK"} default button "OK"
+                end try
+            -- soft and graceful exit
+            else if totalDailySeconds() > dailyUsageLimit or totalWeeklySeconds() > weeklyUsageLimit then
+                gracefulExit()
+            else
+                showWarningIfCloseToThreshould()
             end if
         end if
 
@@ -114,15 +152,15 @@ end main
 on showWarningIfCloseToThreshould()
     if not hasShownWarning then
 
-        --log("timeBookkeeping: daily=" & timeBookkeeping's initialDailySeconds & ", weekly=" & timeBookkeeping's initialWeeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
+        traceLog("timeBookkeeping: daily=" & timeBookkeeping's dailySeconds & ", weekly=" & timeBookkeeping's weeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
         local secondsBeforeWarning
         set secondsBeforeWarning to 60
 
-        --log("dailyUsageLimit= " & dailyUsageLimit)
-        --log("weeklyUsageLimit= " & weeklyUsageLimit)
+        traceLog("dailyUsageLimit= " & dailyUsageLimit)
+        traceLog("weeklyUsageLimit= " & weeklyUsageLimit)
 
-        if currentDaily() > (dailyUsageLimit - secondsBeforeWarning) or currentWeekly() > (weeklyUsageLimit - secondsBeforeWarning) then
-            log("showing warning")
+        if totalDailySeconds() > (dailyUsageLimit - secondsBeforeWarning) or totalWeeklySeconds() > (weeklyUsageLimit - secondsBeforeWarning) then
+            infoLog("showing warning")
             set hasShownWarning to true
             tell application "Finder" to activate
             delay 0.5
@@ -134,7 +172,8 @@ end showWarningIfCloseToThreshould
 on readFileOrDefault(filePath, defaultValue)
     try
         return (do shell script "cat " & quoted form of filePath)
-    on error
+    on error err
+        infoLog("Caught error trying to read file (" & filePath & "): " & err)
         writeFile(defaultValue, filePath, false)
         return defaultValue
     end try
@@ -148,11 +187,42 @@ on writeFile(textContent, filePath, append)
     end if
 end writeFile
 
-on log(textContent)
-    set timestamp to do shell script "date -u +\"%Y-%m-%dT%H:%M:%S%Z\""
+-- Turns out there already is a built-in log(%s) function ...
+-- AppleScript is context sensitive, so you need to prefix with 'my ' from within a 'tell application' block
+-- (yes, AppleScript is weird)
+on doLog(textContent)
+    set timestamp to do shell script "date +\"%Y-%m-%dT%H:%M:%S%z\""
     set logEntry to "[" & timestamp & "] " & textContent
-    writeFile(logEntry, logFile, true)
+
+    if appender is "file" then
+        local logFile
+        set logFile to appDir & "/applog.txt"
+        writeFile(logEntry, logFile, true)
+    else if appender is "stderr" then
+        log(logEntry)
+    else
+        error "Illegal appender (" & appender & "). Legal values: [file, stderr]"
+    end if
+
 end log
+
+on infoLog(textContent)
+    if currentLogLevel <= INFO of logLevels then
+        doLog("INFO: " & textContent)
+    end if
+end log
+
+on debugLog(textContent)
+    if currentLogLevel <= DEBUG of logLevels then
+        doLog("DEBUG: " & textContent)
+    end if
+end debugLog
+
+on traceLog(textContent)
+    if currentLogLevel <= TRACE of logLevels then
+        doLog("TRACE: " & textContent)
+    end if
+end traceLog
 
 on timeToSeconds(timeString)
     set AppleScript's text item delimiters to ":"
@@ -186,47 +256,52 @@ end weekNumber
 on configWithDefault(key, defaultValue)
     try
         return do shell script "/usr/libexec/PlistBuddy -c 'Print " & key & "' " & quoted form of plistPath
-    on error
+    on error err
         return defaultValue
     end try
 end configWithDefault
 
-on resetDbCountersIfNewDayOrWeek()
+on resetStateIfNewDayOrWeek()
     try
         tell application "System Events" to set fileDate to modification date of file usageStateFile
         set fileDateString to formatDate(fileDate)
         set currentDateString to formatDate(current date)
         if fileDateString is not currentDateString then
-            log("Reset daily usage: " & fileDateString & " != " & currentDateString)
-            set timeBookkeeping's initialDailySeconds to 0
+            infoLog("Reset daily usage: " & fileDateString & " != " & currentDateString)
+            set timeBookkeeping's dailySeconds to 0
+            set timeBookkeeping's startOfCurrentSession to current date
         end if
 
         set fileWeekNumber to weekNumber(fileDate)
         set currentWeekNumber to (do shell script "date +%W") as integer
         if fileWeekNumber is not currentWeekNumber then
-            log("Reset weekly usage: Week " & fileWeekNumber & " != " & currentWeekNumber)
-            set timeBookkeeping's initialWeeklySeconds to 0
+            infoLog("Reset weekly usage: Week " & fileWeekNumber & " != " & currentWeekNumber)
+            set timeBookkeeping's weeklySeconds to 0
         end if
-
-        saveTimeBookkeeping()
     on error err
-        log("Weekly reset error: " & err)
+        infoLog("Weekly reset error: " & err)
     end try
-end resetDbCountersIfNewDayOrWeek
+end resetStateIfNewDayOrWeek
 
 on resetStateIfRequired()
-    --log("Checking any state needs resetting")
-    resetDbCountersIfNewDayOrWeek()
+    debugLog("Checking any state needs resetting")
+    resetStateIfNewDayOrWeek()
 
-    if timeBookkeeping's initialWeeklySeconds is 0 or timeBookkeeping's initialWeeklySeconds is 0 then
+    if timeBookkeeping's weeklySeconds is 0 or timeBookkeeping's weeklySeconds is 0 then
         -- reset the flag so that we can show it again
         hasShownWarning = false
     end if
 end resetStateIfRequired
 
 on saveTimeBookkeeping()
-    set dailyTime to secondsToTime(timeBookkeeping's initialDailySeconds)
-    set weeklyTime to secondsToTime(timeBookkeeping's initialWeeklySeconds)
+    local daily, weekly
+    set daily to totalDailySeconds()
+    set weekly to totalWeeklySeconds()
+    traceLog("--> saveTimeBookkeeping")
+    traceLog("totalDailySeconds: " & daily)
+    traceLog("totalWeeklySeconds: " & weekly)
+    set dailyTime to secondsToTime(daily)
+    set weeklyTime to secondsToTime(weekly)
     set content to dailyTime & "," & weeklyTime
     writeFile(content, usageStateFile, false)
 end saveTimeBookkeeping
@@ -237,30 +312,49 @@ on loadTimeBookkeeping()
         set AppleScript's text item delimiters to ","
         set {daily, weekly} to text items of content
         set AppleScript's text item delimiters to ""
-        set timeBookkeeping's initialDailySeconds to timeToSeconds(daily)
-        set timeBookkeeping's initialWeeklySeconds to timeToSeconds(weekly)
+        set timeBookkeeping's dailySeconds to timeToSeconds(daily)
+        set timeBookkeeping's weeklySeconds to timeToSeconds(weekly)
     on error err
-        log("Failed to load usage state: " & err)
-        set timeBookkeeping's initialDailySeconds to 0
-        set timeBookkeeping's initialWeeklySeconds to 0
+        infoLog("Failed to load usage state: " & err)
+        set timeBookkeeping's dailySeconds to 0
+        set timeBookkeeping's weeklySeconds to 0
     end try
 end loadTimeBookkeeping
 
-on elapsed()
-    set now to current date
-    return now - (timeBookkeeping's startOfCurrentSession)
-end elapsed
+on hasStateChanged()
+    return timeBookkeeping's dailySeconds is not totalDailySeconds()
+end hasStateChanged
 
-on currentDaily()
-    return timeBookkeeping's initialDailySeconds + elapsed()
-end currentDaily
+on updateStateAtSessionEnd()
+    traceLog("--> updateStateAtSessionEnd")
+    traceLog("timeBookkeeping's dailySeconds: " & timeBookkeeping's dailySeconds)
+    traceLog("totalDailySeconds: " & totalDailySeconds())
+    set timeBookkeeping's dailySeconds to totalDailySeconds()
+    set timeBookkeeping's weeklySeconds to totalWeeklySeconds()
+    set timeBookkeeping's startOfCurrentSession to missing value
+end updateStateAtSessionEnd
 
-on currentWeekly()
-    return timeBookkeeping's initialWeeklySeconds + elapsed()
-end currentWeekly
+on getCurrentSessionElapsed()
+    traceLog("--> getCurrentSessionElapsed")
+    set sessionStart to timeBookkeeping's startOfCurrentSession
+    traceLog("timeBookkeeping's startOfCurrentSession: " & sessionStart)
+
+    if sessionStart is missing value then return 0
+
+    return (current date) - sessionStart
+end getCurrentSessionElapsed
+
+
+on totalDailySeconds()
+    return timeBookkeeping's dailySeconds + getCurrentSessionElapsed()
+end totalDailySeconds
+
+on totalWeeklySeconds()
+    return timeBookkeeping's weeklySeconds + getCurrentSessionElapsed()
+end totalWeeklySeconds
 
 on gracefulExit()
-        log("Gracefully exiting Minecraft")
+        infoLog("Gracefully exiting Minecraft")
         tell application "System Events"
 
             -- Assumption: play screen
@@ -297,3 +391,33 @@ on gracefulExit()
             display dialog "Timeout!" buttons {"OK"} default button "OK"
         end tell
 end gracefulExit
+
+on shouldQuit()
+    set uninstallFlag to appDir & "/.uninstall"
+    try
+        set result to do shell script "test -f " & quoted form of uninstallFlag & " && echo yes || echo no"
+        if result is "yes" then
+            infoLog("🧹 Uninstall flag detected. Exiting.")
+            do shell script "rm -f " & quoted form of uninstallFlag
+            return true
+        end if
+    on error
+        return false
+    end try
+    return false
+end shouldQuit
+
+on ensureAutomationPermissions()
+    debugLog("ensureAutomationPermissions")
+    try
+        tell application "System Events"
+            -- Utløser automatisk tillatelsesdialog om nødvendig
+            set _ to name of every process
+        end tell
+        infoLog("✅ System Events access granted.")
+        return true
+    on error errMsg number errNum
+        infoLog("❌ Failed to access System Events: " & errMsg & " (" & errNum & ")")
+        return false
+    end try
+end ensureAutomationPermissions

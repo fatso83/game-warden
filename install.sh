@@ -11,13 +11,22 @@ LAUNCH_AGENTS_SUBDIR="Library/LaunchAgents"
 
 MONITOR_SCRIPT_SOURCE="minecraft-monitor.applescript"
 
+# global
+SELECTED_USERS=()
+
 main() {
     trap cleanup EXIT
 
-    list_users
-    prompt_for_users
+    if [[ $# -gt 0 ]]; then
+        SELECTED_USERS=($(echo "$1" | tr ',' '\n'))
+    fi
 
-    for username in "${selected_users[@]}"; do
+    if [[ ${#SELECTED_USERS[@]} -eq 0 ]]; then
+        list_users
+        prompt_for_users
+    fi
+
+    for username in "${SELECTED_USERS[@]}"; do
         echo "📦 Installing for $username..."
         install_for_user "$username"
     done
@@ -28,6 +37,7 @@ cleanup() {
 }
 
 list_users() {
+    local user
     echo "📋 Available users:"
     dscl . list /Users | while read -r user; do
         if [[ -d "/Users/$user" ]] && [[ "$user" != "_"* ]]; then
@@ -38,8 +48,8 @@ list_users() {
 
 prompt_for_users() {
     read -p "👤 Enter comma-separated list of usernames to install for: " user_input
-    IFS=',' read -ra selected_users <<< "$user_input"
-    for user in "${selected_users[@]}"; do
+    IFS=',' read -ra SELECTED_USERS <<< "$user_input"
+    for user in "${SELECTED_USERS[@]}"; do
         homedir="/Users/$user"
         if [[ ! -d "$homedir" ]]; then
             echo "❌ Home directory for $user not found: $homedir"
@@ -52,16 +62,19 @@ install_for_user() {
     local username="$1"
     local homedir="/Users/$username"
     local user_uid=$(id -u "$username")
-    local user_gid=$(id -g "$username")
 
     local app_support="$homedir/$APP_SUPPORT_SUBDIR"
     local launch_agents="$homedir/$LAUNCH_AGENTS_SUBDIR"
 
+    if [[ -e "$app_support" ]]; then
+        sudo -u "$username" ./uninstall.sh "$username"
+
+        # This should already have been removed by the application on detection
+        (sleep 1.5; rm -f "$app_support/.uninstall" &)
+    fi
+
     sudo -u "$username" mkdir -p "$app_support"
     sudo -u "$username" mkdir -p "$launch_agents"
-
-    sudo cp config.plist "$app_support/config.plist"
-    sudo osacompile -o "$app_support/$SCRIPT_NAME" "$MONITOR_SCRIPT_SOURCE"
 
     cat > "$PLIST_FILENAME" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -80,8 +93,14 @@ install_for_user() {
     <true/>
     <key>KeepAlive</key>
     <true/>
+
+    <!-- All log() statements in AppleScripts ends up on standard error -->
     <key>StandardErrorPath</key>
     <string>$app_support/error.log</string>
+
+    <!-- We create an application.log to actually capture application output -->
+
+    <!-- This is assumed to always be empty -->
     <key>StandardOutPath</key>
     <string>$app_support/output.log</string>
 </dict>
@@ -89,13 +108,23 @@ install_for_user() {
 EOF
 
     sudo cp "$PLIST_FILENAME" "$launch_agents/"
-    sudo chown "$username:$user_gid" "$launch_agents/$PLIST_FILENAME"
-    sudo chown "$username:$user_gid" "$app_support/$SCRIPT_NAME" "$app_support/config.plist"
+    sudo osacompile -o "$app_support/$SCRIPT_NAME" "$MONITOR_SCRIPT_SOURCE"
 
-    echo "ℹ️  To activate the LaunchAgent for $username, run the following command in their session:"
-    echo "   launchctl bootstrap gui/$user_uid \"$launch_agents/$PLIST_FILENAME\""
+    # do not overwrite configuration files the user has changed
+    UNCHANGED_CONFIG_CHECKSUM=$(md5 --quiet config.plist)
+    if ! ( [ -e "$app_support/config.plist" ] \
+        &&  ! (md5 -c "$UNCHANGED_CONFIG_CHECKSUM" --quiet "$app_support/config.plist" > /dev/null)); then
+        sudo cp config.plist "$app_support/config.plist"
+    fi
+
+    # Ensure the agent files cannot just be removed by the user without having admin rights
+    sudo chown "root:admin" "$launch_agents/$PLIST_FILENAME"
+    sudo chown "root:admin" "$app_support/$SCRIPT_NAME" "$app_support/config.plist"
+
+
+    sudo launchctl bootstrap "gui/$user_uid" "$launch_agents/$PLIST_FILENAME"
     echo "✅ Installed for $username"
     echo
 }
 
-main
+main "$@"

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- This file is used while developing and testing.
-The actual config is generated at install time -->
+<!-- This config file can be altered at will. If changed, it will not be overwritten on re-installs -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -14,6 +13,8 @@ The actual config is generated at install time -->
     <key>dailyMax</key>
     <string>1:00</string>
 
+    <!-- Totally optional if you want to customise the exit message in your own language, for instance -->
+    <!-- This might be moved to language resource files, potentially-->
     <!--<key>customExitMessage</key>-->
     <!--<string>Lagre og avslutt Minecraft umiddelbart!</string>-->
 
