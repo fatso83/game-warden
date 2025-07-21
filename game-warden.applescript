@@ -1,4 +1,4 @@
--- Script to limit Minecraft usage to a certain number of hours per day and week
+-- Script to limit game usage to a certain number of hours per day and week
 -- For the reference on AppleScript, see https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/introduction/ASLR_intro.html#//apple_ref/doc/uid/TP40000983-CH208-SW1
 
 use framework "Foundation"
@@ -22,7 +22,7 @@ property exitMessage        : missing value
 -- if I set the property here, it seems that "user domain" gets set to root, but only when installed as an agent, not
 -- as a script running on the command line! Resulting error looks like:
 -- execution error: mkdir: /private/var/root/Library: Permission denied (1)
-property appDir             : missing value -- Otherwise: POSIX path of (path to application support folder from user domain) & "minecraft-monitor"
+property appDir             : missing value -- Otherwise: POSIX path of (path to application support folder from user domain) & "game-warden"
 
 -- either stderr or file - stderr is mostly useful when developing, file for non-interactive work
 property appender           : "stderr"
@@ -55,7 +55,7 @@ on run argv
 end run
 
 on main()
-    set appDir  to (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor"
+    set appDir  to (POSIX path of (path to application support folder from user domain)) & "game-warden"
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     set dailyUsageLimit to timeToSeconds(configWithDefault("dailyMax", "01:00") & ":00")
     set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
@@ -140,7 +140,7 @@ on main()
             -- hard and brutal exit
             if totalDailySeconds() > (dailyUsageLimit+5) or totalWeeklySeconds() > (weeklyUsageLimit + 5) then
                 try
-                    infoLog("Killing Minecraft")
+                    infoLog("Killing the current process")
                     do shell script "kill " & processId
                     display dialog "Timeout!" buttons {"OK"} default button "OK"
                 end try

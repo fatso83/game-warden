@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Install the Minecraft monitor script as LaunchAgent for selected users
+# Install the game-warden script as LaunchAgent for selected users
 set -euo pipefail
 
-PLIST_ID="no.kopseng.minecraft-monitor"
+PLIST_ID="no.kopseng.game-warden"
 PLIST_FILENAME="$PLIST_ID.plist"
-SCRIPT_NAME="minecraft-monitor.scpt"
+SCRIPT_NAME="game-warden.scpt"
 
-APP_SUPPORT_SUBDIR="Library/Application Support/minecraft-monitor"
+APP_SUPPORT_SUBDIR="Library/Application Support/game-warden"
 LAUNCH_AGENTS_SUBDIR="Library/LaunchAgents"
 
-MONITOR_SCRIPT_SOURCE="minecraft-monitor.applescript"
+MONITOR_SCRIPT_SOURCE="game-warden.applescript"
 
 # global
 SELECTED_USERS=()

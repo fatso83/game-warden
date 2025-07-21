@@ -22,7 +22,7 @@
         <!-- Totally optional if you want to customise the exit message in your own language, for instance -->
         <!-- This might be moved to language resource files, potentially-->
         <!--<key>customExitMessage</key>-->
-        <!--<string>Lagre og avslutt Minecraft umiddelbart!</string>-->
+        <!--<string>Lagre og avslutt umiddelbart!</string>-->
 
 
     </dict>

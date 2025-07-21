@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLIST_ID="no.kopseng.minecraft-monitor"
-COMPILED_NAME="minecraft-monitor.scpt"
+PLIST_ID="no.kopseng.game-warden"
+COMPILED_NAME="game-warden.scpt"
 SELECTED_USERS=()
 
 main() {
@@ -40,7 +40,7 @@ list_mac_users() {
 uninstall_for_user() {
     local user=$1
     local home="/Users/$user"
-    local app_support="$home/Library/Application Support/minecraft-monitor"
+    local app_support="$home/Library/Application Support/game-warden"
     local launch_agents="$home/Library/LaunchAgents"
     local agent_path="$launch_agents/$PLIST_ID.plist"
 
