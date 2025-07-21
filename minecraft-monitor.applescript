@@ -17,8 +17,14 @@ property plistPath          : missing value
 property hasShownWarning    : false
 property usageStateFile     : missing value
 property exitMessage        : missing value
---property appDir             : POSIX path of (path to application support folder from user domain) & "minecraft-monitor"
-property appDir             : missing value --POSIX path of (path to application support folder from user domain) & "minecraft-monitor"
+
+-- This needs delayed setting for a strange reason:
+-- if I set the property here, it seems that "user domain" gets set to root, but only when installed as an agent, not
+-- as a script running on the command line! Resulting error looks like:
+-- execution error: mkdir: /private/var/root/Library: Permission denied (1)
+property appDir             : missing value -- Otherwise: POSIX path of (path to application support folder from user domain) & "minecraft-monitor"
+
+-- either stderr or file - stderr is mostly useful when developing, file for non-interactive work
 property appender           : "stderr"
 --property appender           : "file"
 
@@ -38,6 +44,7 @@ script timeBookkeeping
 end script
 
 on run argv
+    -- Turns out the exit status of the shell scripts is not equal to the exit status of the AppleScript
     if (count of argv) < 1 then
         do shell script ">&2 echo 'Error: Missing required argument (path to config.plist)'; exit 100"
     else
@@ -48,9 +55,7 @@ on run argv
 end run
 
 on main()
-    --set logLevels to { TRACE: 0, DEBUG: 1, INFO: 2, WARN: 3 }
-
-    set appDir             to (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor"
+    set appDir  to (POSIX path of (path to application support folder from user domain)) & "minecraft-monitor"
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     set dailyUsageLimit to timeToSeconds(configWithDefault("dailyMax", "01:00") & ":00")
     set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
@@ -71,16 +76,17 @@ on main()
 
 
     local now
-    local warnTimeDaily, warnTimeWeekly
+    local warnTimeDaily, warnTimeWeekly, patternsList
     set timeBookkeeping's startOfCurrentSession to missing value
+    set patternsList to readProcessPatterns(plistPath)
 
     infoLog("Loading saved records")
     loadTimeBookkeeping()
     debugLog("main: finished init .. starting main loop")
 
     repeat
-        local activeProcessSeemsLikeMatch
-        set activeProcessSeemsLikeMatch to false
+        local activeProcessHasMatch
+        set activeProcessHasMatch to false
 
         if shouldQuit() then
             return
@@ -98,17 +104,18 @@ on main()
         end tell
 
         debugLog("Checking for process pattern")
-        try
+        repeat with pat in patternsList
             -- If the shell exits with a non-zero code, it did not find the process
             -- It will also throw an error, which we catch and ignore
-            --local processGrepPattern : "java.*[m]inecraft"
-            local processGrepPattern
-            set processGrepPattern to "java.*[m]inecraft"
-            do shell script "ps -f " & processId & " | grep " & quoted form of processGrepPattern
-            set activeProcessSeemsLikeMatch to true
-        end try
+            try
+                do shell script "ps -f " & processId & " | grep -E " & quoted form of pat
+                set activeProcessHasMatch to true
+                debugLog("Matched on process pattern: " & pat)
+                exit repeat
+            end try
+        end repeat
 
-        if not activeProcessSeemsLikeMatch then
+        if not activeProcessHasMatch then
             if timeBookkeeping's startOfCurrentSession is not missing value then
                 infoLog("No monitored process in the foreground. Elapsed time: " & getCurrentSessionElapsed() )
             end if
@@ -121,7 +128,7 @@ on main()
             resetStateIfRequired()
 
             if timeBookkeeping's startOfCurrentSession is missing value then
-                infoLog("Monitored process in the foreground.")
+                infoLog("Monitored process in the foreground: " & appName & " (pid=" & processId & ")")
                 set timeBookkeeping's startOfCurrentSession to current date
             end if
 
@@ -353,44 +360,65 @@ on totalWeeklySeconds()
     return timeBookkeeping's weeklySeconds + getCurrentSessionElapsed()
 end totalWeeklySeconds
 
-on gracefulExit()
+on processWithArgumentsMatchesPattern(pid, pattern)
+    try
+        do shell script "ps -f " & pid & " | grep -E " & quoted form of pattern
+        return true
+    end try
+    return false
+end processWithArgumentsMatchesPattern
+
+on processIsMinecraft(pid)
+    return processWithArgumentsMatchesPattern(pid, "java.*[m]inecraft")
+end processIsMinecraft
+
+on gracefulExit(pid)
+    if processIsMinecraft(pid) then
         infoLog("Gracefully exiting Minecraft")
-        tell application "System Events"
-
-            -- Assumption: play screen
-            key code 53 -- Escape
-            delay 0.2
-
-            repeat 5 times
-                key code 125 -- Arrow down
-                delay 0.1
-            end repeat
-
-            -- Save and go the main menu
-            key code 36 -- Enter
-            delay 0.5
-
-            -- If the assumption was wrong, and we were at the main screen
-            -- and now ended up at some sub-menu,
-            -- we can get back to the main screen by just tapping Esc again
-            key code 53 -- Escape
-            delay 0.2
-
-            -- Assumption: we are at main screen
-            repeat 3 times
-                key code 125 -- Arrow down
-                delay 0.1
-            end repeat
-
-            key code 124 -- Arrow right
-            delay 0.1
-
-            -- Quits!
-            key code 36 -- Enter
-
-            display dialog "Timeout!" buttons {"OK"} default button "OK"
-        end tell
+        gracefulExitMinecraft()
+    else
+        infoLog("Trying to gracefully exit by invoking Cmd-Q as general go-to")
+        -- This will hopefully trigger some general exit code that flushes to disk
+    end if
 end gracefulExit
+
+on gracefulExitMinecraft()
+    tell application "System Events"
+
+        -- Assumption: play screen
+        key code 53 -- Escape
+        delay 0.2
+
+        repeat 5 times
+            key code 125 -- Arrow down
+            delay 0.1
+        end repeat
+
+        -- Save and go the main menu
+        key code 36 -- Enter
+        delay 0.5
+
+        -- If the assumption was wrong, and we were at the main screen
+        -- and now ended up at some sub-menu,
+        -- we can get back to the main screen by just tapping Esc again
+        key code 53 -- Escape
+        delay 0.2
+
+        -- Assumption: we are at main screen
+        repeat 3 times
+            key code 125 -- Arrow down
+            delay 0.1
+        end repeat
+
+        key code 124 -- Arrow right
+        delay 0.1
+
+        -- Quits!
+        key code 36 -- Enter
+
+        display dialog "Timeout!" buttons {"OK"} default button "OK"
+    end tell
+end gracefulExitMinecraft
 
 on shouldQuit()
     set uninstallFlag to appDir & "/.uninstall"
@@ -421,3 +449,12 @@ on ensureAutomationPermissions()
         return false
     end try
 end ensureAutomationPermissions
+
+-- Relies on 'use framework "Foundation"' to load it as an NSArray
+on readProcessPatterns(plistPath)
+    set dict to current application's NSDictionary's dictionaryWithContentsOfFile:plistPath
+    set patterns to dict's objectForKey:"processPatterns"
+    -- patterns is an NSArray of NSStrings
+    set result to patterns as list
+    return result  -- now an AppleScript list of strings
+end readProcessPatterns
