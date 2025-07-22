@@ -38,8 +38,19 @@ Most non-techies should just download the files as a zip-file and unzip it in `~
 Now you need to navigate to the folder in the `Terminal.app`. If you have opened the Terminal app, you will typically now type the following:
 
 ```bash
-cd ~/Downloads/game-warden-main
-./install.sh
+❯ cd ~/Downloads/game-warden-main
+
+❯ ./install.sh
+📋 Available users:
+carlerik
+ida
+smagriser
+👤 Enter comma-separated list of usernames to install for: smagriser
+📦 Installing for smagriser...
+🧹 Uninstalling for smagriser...
+✅ Cleaned up for smagriser (leaving log files, config and state file)
+✅ Uninstall complete.
+✅ Installed for smagriser
 ```
 
 That's it!
