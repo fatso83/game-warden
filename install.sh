@@ -67,7 +67,8 @@ install_for_user() {
     local launch_agents="$homedir/$LAUNCH_AGENTS_SUBDIR"
 
     if sudo -u "$username" test -e "$app_support"; then
-        sudo -u "$username" ./uninstall.sh "$username"
+        # This will invoke sudo by itself
+        ./uninstall.sh "$username"
 
         # This should already have been removed by the application on detection
         (sleep 1.5; rm -f "$app_support/.uninstall" &)
