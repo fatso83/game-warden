@@ -127,7 +127,7 @@ EOF
     sudo chown "root:admin" "$app_support/$SCRIPT_NAME" "$app_support/config.plist"
 
 
-    sudo launchctl bootstrap "gui/$user_uid" "$launch_agents/$PLIST_FILENAME"
+    sudo launchctl bootstrap "gui/$user_uid" "$launch_agents/$PLIST_FILENAME" || true
     echo "✅ Installed for $username"
     echo
 }
