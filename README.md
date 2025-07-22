@@ -47,6 +47,26 @@ You can see the basic settings in the file `config.plist`, which you can open in
 ```
 Just change the values as you see fit. This is what I found right for my 7 year old. Once you feel you have the settings right, just re-run `./install.sh`.
 
+# Development
+
+If you want to hack on this, feel free! You might find it useful to observe these tips:
+
+## Control logging via env vars
+AppleScript is terrible at debugging, only giving you an offset in chars (?) indicating what went wrong.
+Configurable logging has proven essential, to avoid commenting code in and out.
+
+When developing and/or debugging this, I usually uninstall the program from the current user to not have weird result and then run it like this:
+```bash
+GW_LOG_LEVEL=TRACE GW_APPENDER=stderr osascript game-warden.applescript config.plist
+```
+
+## Figuring out where something went wrong
+As mentioned, AppleScript is terrible at debugging, often just giving you an offset in characters, not lines.
+To figure out what is happening at offset 5435, I usually just do this to get some context:
+```bash
+dd if=game-warden.applescript of=/dev/stdout bs=1 skip=5420 count=100
+```
+This outputs 100 bytes, starting 15 chars before the offset.
 
 # Acknowledgements
 

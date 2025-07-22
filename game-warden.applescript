@@ -5,9 +5,9 @@ use framework "Foundation"
 use framework "AppKit"
 use scripting additions
 
--- log levels
-property logLevels : { TRACE: 0, DEBUG: 1, INFO: 2, WARN: 3 }
-property currentLogLevel : INFO of logLevels
+-- log levels - setup by setupLogging()
+property nsLogLevels        : missing value
+property currentLogLevel    : missing value
 
 property weeklyUsageLimit   : missing value
 property dailyUsageLimit    : missing value
@@ -23,8 +23,6 @@ property exitMessage        : missing value
 property appDir             : missing value -- Otherwise: POSIX path of (path to application support folder from user domain) & "game-warden"
 
 -- either stderr or file - stderr is mostly useful when developing, file for non-interactive work
--- TODO: move to env var. easy to mess up
---property appender           : "stderr"
 property appender           : "file"
 
 -- Record to store usage state
@@ -54,6 +52,7 @@ on run argv
 end run
 
 on main()
+    setupLogging()
     set appDir  to (POSIX path of (path to application support folder from user domain)) & "game-warden"
     set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
@@ -214,24 +213,6 @@ on doLog(textContent)
     end if
 
 end log
-
-on infoLog(textContent)
-    if currentLogLevel <= INFO of logLevels then
-        doLog("INFO : " & textContent)
-    end if
-end log
-
-on debugLog(textContent)
-    if currentLogLevel <= DEBUG of logLevels then
-        doLog("DEBUG: " & textContent)
-    end if
-end debugLog
-
-on traceLog(textContent)
-    if currentLogLevel <= TRACE of logLevels then
-        doLog("TRACE: " & textContent)
-    end if
-end traceLog
 
 on timeToSeconds(timeString)
     set AppleScript's text item delimiters to ":"
@@ -480,3 +461,70 @@ on updateDailyUsageLimit()
     set dailyUsageLimit to timeToSeconds(configWithDefault(currentDay, "01:00") & ":00")
     debugLog("daily usage limit for " & currentDay & ": " & dailyUsageLimit)
 end updateDailyUsageLimit
+
+--------------------------------------------------------------------------------
+-- Start logging code --
+--------------------------------------------------------------------------------
+
+on setupLogging()
+    local lvlStr, appenderStr
+
+    set nsLogLevels to current application's NSMutableDictionary's dictionary()
+    nsLogLevels's setObject:0 forKey:"TRACE"
+    nsLogLevels's setObject:1 forKey:"DEBUG"
+    nsLogLevels's setObject:2 forKey:"INFO"
+    nsLogLevels's setObject:3 forKey:"WARN"
+
+    try
+        set env to current application's NSProcessInfo's processInfo()'s environment()
+        set lvlStr to env's objectForKey:"GW_LOG_LEVEL"
+        if lvlStr is missing value then
+            set currentLogLevel to levelFromText("INFO")
+        else
+            set currentLogLevel to levelFromText(lvlStr as text)
+        end if
+
+        set appenderStr to env's objectForKey:"GW_APPENDER"
+        if appenderStr is not missing value then
+            set appender to appenderStr as text
+        end if
+
+    end try
+
+    traceLog(appenderStr as text)
+    traceLog(lvlStr as text)
+    traceLog(currentLogLevel)
+    log("logging setup finished")
+end setupLogging
+
+-- dynamic lookup
+on levelFromText(keyStr)
+    set val to nsLogLevels's objectForKey:keyStr
+    if val is missing value then
+        error "Was passed invalid log level: " & keyStr
+    end if
+
+    return val as integer
+end levelFromText
+
+on infoLog(textContent)
+    if currentLogLevel <= levelFromText("INFO") then
+        doLog("INFO : " & textContent)
+    end if
+end log
+
+on debugLog(textContent)
+    if currentLogLevel <= levelFromText("DEBUG") then
+        doLog("DEBUG: " & textContent)
+    end if
+end debugLog
+
+on traceLog(textContent)
+    if currentLogLevel <= levelFromText("TRACE") then
+        doLog("TRACE: " & textContent)
+    end if
+end traceLog
+
+--------------------------------------------------------------------------------
+-- End logging code --
+--------------------------------------------------------------------------------
