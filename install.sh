@@ -71,7 +71,7 @@ install_for_user() {
         ./uninstall.sh "$username"
 
         # This should already have been removed by the application on detection
-        (sleep 1.5; rm -f "$app_support/.uninstall" &)
+        (sleep 1.5; sudo rm -f "$app_support/.uninstall" &)
     fi
 
     sudo -u "$username" mkdir -p "$app_support"
