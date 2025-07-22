@@ -18,6 +18,9 @@
         <dict>
             <key>minecraft</key><string>java.*[m]inecraft</string>
             <key>steam-games</key><string>steamapps</string>
+
+            <!--It work's for any type of process:-->
+            <!--<key>whatsapp</key><string>MacOS/WhatsApp</string>-->
         </dict>
 
 

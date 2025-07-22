@@ -376,7 +376,12 @@ on gracefulExit(matchedProcess)
         gracefulExitMinecraft()
     else
         infoLog("Trying to gracefully exit by invoking Cmd-Q as general go-to")
-        -- This will hopefully trigger some general exit code that flushes to disk
+        tell application "System Events"
+            set targetProc to first process whose unix id is pid of matchedProcess
+            -- Send Command-Q only to this process
+            -- This will hopefully trigger some general exit code that flushes to disk
+            tell targetProc to keystroke "q" using {command down}
+        end tell
     end if
 end gracefulExit
 
