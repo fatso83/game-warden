@@ -25,8 +25,9 @@ property exitMessage        : missing value
 property appDir             : missing value -- Otherwise: POSIX path of (path to application support folder from user domain) & "game-warden"
 
 -- either stderr or file - stderr is mostly useful when developing, file for non-interactive work
-property appender           : "stderr"
---property appender           : "file"
+-- TODO: move to env var. easy to mess up
+--property appender           : "stderr"
+property appender           : "file"
 
 -- Record to store usage state
 -- Problems to keep an eye out for
