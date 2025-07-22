@@ -217,7 +217,7 @@ end log
 
 on infoLog(textContent)
     if currentLogLevel <= INFO of logLevels then
-        doLog("INFO:  " & textContent)
+        doLog("INFO : " & textContent)
     end if
 end log
 
