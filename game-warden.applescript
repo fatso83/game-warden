@@ -52,11 +52,34 @@ on run argv
 end run
 
 on main()
-    setupLogging()
     set appDir  to (POSIX path of (path to application support folder from user domain)) & "game-warden"
+    setupLogging()
     set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     updateDailyUsageLimit()
+    infoLog("\
+  ______   ______   ______   ______   ______   ______   ______   ______   ______   ______   ______\
+ /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/\
+\
+\
+ ._.    ________                         __      __                  .___                    ._.\
+ | |   /  _____/_____    _____   ____   /  \\    /  \\_____ _______  __| _/____   ____         | |\
+ |_|  /   \\  ___\\__  \\  /     \\_/ __ \\  \\   \\/\\/   /\\__  \\\\_  __ \\/ __ |/ __ \\ /    \\        |_|\
+ |-|  \\    \\_\\  \\/ __ \\|  Y Y  \\  ___/   \\        /  / __ \\|  | \\/ /_/ \\  ___/|   |  \\       |-|\
+ | |   \\______  (____  /__|_|  /\\___  >   \\__/\\  /  (____  /__|  \\____ |\\___  >___|  /       | |\
+ |_|          \\/     \\/      \\/     \\/         \\/        \\/           \\/    \\/     \\/        |_|\
+\
+\
+  ______   ______   ______   ______   ______   ______   ______   ______   ______   ______   ______\
+ /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/\
+ ")
+
+
+
+
+
+
+
 
     set usageStateFile to appDir & "/usage-state.dat"
 
@@ -494,7 +517,7 @@ on setupLogging()
     traceLog(appenderStr as text)
     traceLog(lvlStr as text)
     traceLog(currentLogLevel)
-    log("logging setup finished")
+    traceLog("logging setup finished")
 end setupLogging
 
 -- dynamic lookup
