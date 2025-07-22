@@ -35,8 +35,15 @@ You can see the basic settings in the file `config.plist`, which you can open in
     <string>5:00</string>
 
     <!-- hour:minutes -->
-    <key>dailyMax</key>
+    <key>Monday</key>
     <string>1:00</string>
+    ...
+
+    <key>processPatterns</key>
+    <dict>
+        <key>minecraft</key><string>java.*[m]inecraft</string>
+        <key>steam-games</key><string>steamapps</string>
+        ...
 ```
 Just change the values as you see fit. This is what I found right for my 7 year old. Once you feel you have the settings right, just re-run `./install.sh`.
 

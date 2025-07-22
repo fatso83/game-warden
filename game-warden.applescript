@@ -9,8 +9,6 @@ use scripting additions
 property logLevels : { TRACE: 0, DEBUG: 1, INFO: 2, WARN: 3 }
 property currentLogLevel : INFO of logLevels
 
-property statusItem         : missing value
-property interval           : 1.0
 property weeklyUsageLimit   : missing value
 property dailyUsageLimit    : missing value
 property plistPath          : missing value
@@ -57,13 +55,13 @@ end run
 
 on main()
     set appDir  to (POSIX path of (path to application support folder from user domain)) & "game-warden"
-    set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
-    set dailyUsageLimit to timeToSeconds(configWithDefault("dailyMax", "01:00") & ":00")
     set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
+    set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
+    updateDailyUsageLimit()
 
     set usageStateFile to appDir & "/usage-state.dat"
 
-    local currentUser, warnTimeDaily, warnTimeWeekly, matchedProcess
+    local currentUser, warnTimeDaily, warnTimeWeekly, matchedProcess, activeProcessHasMatch, interval, saveInterval
     set currentUser to do shell script "whoami"
     debugLog("script running as user: " & currentUser)
     debugLog("appDir: " & appDir)
@@ -84,7 +82,6 @@ on main()
     debugLog("main: finished init .. starting main loop")
 
     repeat
-        local activeProcessHasMatch
         set activeProcessHasMatch to false
 
         if shouldQuit() then
@@ -136,9 +133,10 @@ on main()
             end if
 
             -- Save every few seconds
-            --if totalDailySeconds() mod 3 = 0 then
+            set saveInterval to 5
+            if totalDailySeconds() mod saveInterval = 0 then
                 saveTimeBookkeeping()
-            --end if
+            end if
 
             -- hard and brutal exit
             if totalDailySeconds() > (dailyUsageLimit+5) or totalWeeklySeconds() > (weeklyUsageLimit + 5) then
@@ -155,6 +153,7 @@ on main()
             end if
         end if
 
+        set interval to 1.0
         delay interval
     end repeat
 end main
@@ -280,6 +279,7 @@ on resetStateIfNewDayOrWeek()
             infoLog("Reset daily usage: " & fileDateString & " != " & currentDateString)
             set timeBookkeeping's dailySeconds to 0
             set timeBookkeeping's startOfCurrentSession to current date
+            updateDailyUsageLimit()
         end if
 
         set fileWeekNumber to weekNumber(fileDate)
@@ -473,3 +473,10 @@ on readProcessPatterns(plistPath)
     return res
 end readProcessPatterns
 
+on updateDailyUsageLimit()
+    traceLog("--> updateDailyUsageLimit")
+    -- Ensure English days of the week to match the .plist keys.
+    set currentDay to do shell script "LC_ALL=en_US.UTF-8 date +%A"
+    set dailyUsageLimit to timeToSeconds(configWithDefault(currentDay, "01:00") & ":00")
+    debugLog("daily usage limit for " & currentDay & ": " & dailyUsageLimit)
+end updateDailyUsageLimit

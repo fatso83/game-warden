@@ -10,8 +10,20 @@
         <string>5:00</string>
 
         <!-- hour:minutes -->
-        <key>dailyMax</key>
+        <key>Monday</key>
         <string>1:00</string>
+        <key>Tuesday</key>
+        <string>1:00</string>
+        <key>Wedneday</key>
+        <string>1:00</string>
+        <key>Thursday</key>
+        <string>1:00</string>
+        <key>Friday</key>
+        <string>1:00</string>
+        <key>Saturday</key>
+        <string>2:00</string>
+        <key>Sunday</key>
+        <string>2:00</string>
 
         <!-- We can use the key to invoke special handling in the script based on the process -->
         <key>processPatterns</key>
