@@ -66,7 +66,7 @@ install_for_user() {
     local app_support="$homedir/$APP_SUPPORT_SUBDIR"
     local launch_agents="$homedir/$LAUNCH_AGENTS_SUBDIR"
 
-    if ! sudo -u "$user" test -e "$app_support"; then
+    if ! sudo -u "$username" test -e "$app_support"; then
         sudo -u "$username" ./uninstall.sh "$username"
 
         # This should already have been removed by the application on detection
