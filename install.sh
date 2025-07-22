@@ -112,8 +112,13 @@ EOF
 
     # do not overwrite configuration files the user has changed
     UNCHANGED_CONFIG_CHECKSUM=$(md5 --quiet config.plist)
-    if ! ( [ -e "$app_support/config.plist" ] \
+    if ( [ -e "$app_support/config.plist" ] \
         &&  ! (md5 -c "$UNCHANGED_CONFIG_CHECKSUM" --quiet "$app_support/config.plist" > /dev/null)); then
+        NEW_CONFIG="$app_support/config.plist.new"
+        echo "Detected custom config: not overwriting."
+        echo "Putting new reference config next to it as $NEW_CONFIG"
+        sudo cp -f config.plist "$NEW_CONFIG"
+    else
         sudo cp config.plist "$app_support/config.plist"
     fi
 

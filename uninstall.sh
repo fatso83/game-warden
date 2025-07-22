@@ -51,6 +51,10 @@ uninstall_for_user() {
 
     echo "🧹 Uninstalling for $user..."
 
+    # set uninstall flag that the process checks for to exit!
+    # This is strictly not required, but makes it possible to restart the process in a simple manner as well
+    sudo touch "$app_support/.uninstall"
+
     # From launchctl help text:
     #gui/<uid>/[service-name]
     #Targets the GUI domain or service within. Each GUI domain is associated with a
@@ -62,9 +66,6 @@ uninstall_for_user() {
     # root-owned
     sudo rm -f "$agent_path"
     sudo rm -f "$app_support/$COMPILED_NAME"
-
-    # set uninstall flag that the process checks for to exit!
-    sudo touch "$app_support/.uninstall"
 
     # Leaving the log files, config and state, as we we might uninstall as part of upgrading to a newer version
 
