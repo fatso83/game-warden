@@ -5,6 +5,9 @@
 <plist version="1.0">
     <dict>
 
+        <key>warnTime</key>
+        <string>00:05:00</string>
+
         <!-- hour:minutes -->
         <key>weeklyMax</key>
         <string>5:00</string>

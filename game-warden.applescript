@@ -11,6 +11,8 @@ property currentLogLevel    : missing value
 
 property weeklyUsageLimit   : missing value
 property dailyUsageLimit    : missing value
+property secondsBeforeWarning : missing value
+
 property plistPath          : missing value
 property hasShownWarning    : false
 property usageStateFile     : missing value
@@ -52,11 +54,10 @@ on run argv
 end run
 
 on main()
+    local currentUser, warnTimeDaily, warnTimeWeekly, matchedProcess, activeProcessHasMatch, interval, saveInterval
+
     set appDir  to (POSIX path of (path to application support folder from user domain)) & "game-warden"
     setupLogging()
-    set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
-    set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
-    updateDailyUsageLimit()
     infoLog("\
   ______   ______   ______   ______   ______   ______   ______   ______   ______   ______   ______\
  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/\
@@ -74,19 +75,15 @@ on main()
  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/\
  ")
 
-
-
-
-
-
-
-
+    set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
+    set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
+    updateDailyUsageLimit()
+    set secondsBeforeWarning to timeToSeconds(configWithDefault("warnTime", "00:02:00"))
     set usageStateFile to appDir & "/usage-state.dat"
-
-    local currentUser, warnTimeDaily, warnTimeWeekly, matchedProcess, activeProcessHasMatch, interval, saveInterval
     set currentUser to do shell script "whoami"
     debugLog("script running as user: " & currentUser)
     debugLog("appDir: " & appDir)
+    debugLog("secondsBeforeWarning: " & secondsBeforeWarning)
 
     do shell script "mkdir -p " & quoted form of appDir
 
@@ -184,9 +181,6 @@ on showWarningIfCloseToThreshold()
     if not hasShownWarning then
 
         traceLog("timeBookkeeping: daily=" & timeBookkeeping's dailySeconds & ", weekly=" & timeBookkeeping's weeklySeconds & ", session=" & (timeBookkeeping's startOfCurrentSession as string))
-        local secondsBeforeWarning
-        set secondsBeforeWarning to 60
-
         traceLog("dailyUsageLimit= " & dailyUsageLimit)
         traceLog("weeklyUsageLimit= " & weeklyUsageLimit)
 
