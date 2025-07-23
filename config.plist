@@ -17,8 +17,8 @@
         <string>1:00</string>
         <key>Tuesday</key>
         <string>1:00</string>
-        <key>Wedneday</key>
-        <string>1:00</string>
+        <key>Wednesday</key>
+        <string>0:50</string>
         <key>Thursday</key>
         <string>1:00</string>
         <key>Friday</key>
@@ -43,7 +43,5 @@
         <!-- This might be moved to language resource files, potentially-->
         <!--<key>customExitMessage</key>-->
         <!--<string>Lagre og avslutt umiddelbart!</string>-->
-
-
     </dict>
 </plist>

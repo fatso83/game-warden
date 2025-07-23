@@ -79,7 +79,7 @@ on main()
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     updateDailyUsageLimit()
     set secondsBeforeWarning to timeToSeconds(configWithDefault("warnTime", "00:02:00"))
-    set usageStateFile to appDir & "/usage-state.dat"
+    set usageStateFile to userData("usage-state.dat")
     set currentUser to do shell script "whoami"
     debugLog("script running as user: " & currentUser)
     debugLog("appDir: " & appDir)
@@ -221,7 +221,7 @@ on doLog(textContent)
 
     if appender is "file" then
         local logFile
-        set logFile to appDir & "/data/app.log"
+        set logFile to userData("app.log")
         writeFile(logEntry, logFile, true)
     else if appender is "stderr" then
         log(logEntry)
@@ -264,6 +264,7 @@ on configWithDefault(key, defaultValue)
     try
         return do shell script "/usr/libexec/PlistBuddy -c 'Print " & key & "' " & quoted form of plistPath
     on error err
+        debugLog("Caught error: " & err)
         return defaultValue
     end try
 end configWithDefault
@@ -423,7 +424,7 @@ on gracefulExitMinecraft()
 end gracefulExitMinecraft
 
 on shouldQuit()
-    set uninstallFlag to appDir & "/data/.uninstall"
+    set uninstallFlag to userData(".uninstall")
     try
         set result to do shell script "test -f " & quoted form of uninstallFlag & " && echo yes || echo no"
         if result is "yes" then
@@ -478,6 +479,10 @@ on updateDailyUsageLimit()
     set dailyUsageLimit to timeToSeconds(configWithDefault(currentDay, "01:00") & ":00")
     debugLog("daily usage limit for " & currentDay & ": " & dailyUsageLimit)
 end updateDailyUsageLimit
+
+on userData(someFile)
+    return appDir & "/data/" & someFile
+end userData
 
 --------------------------------------------------------------------------------
 -- Start logging code --

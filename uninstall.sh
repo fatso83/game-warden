@@ -66,6 +66,8 @@ uninstall_for_user() {
     # root-owned
     sudo rm -f "$agent_path"
     sudo rm -f "$app_support/$COMPILED_NAME"
+    # revert ownership so the user can install their own agents again (todo: also restore group ownership)
+    sudo chown "$user" "$launch_agents"
 
     # Leaving the log files, config and state, as we we might uninstall as part of upgrading to a newer version
 

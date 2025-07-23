@@ -66,6 +66,7 @@ install_for_user() {
     local app_support="$homedir/$APP_SUPPORT_SUBDIR"
     local launch_agents="$homedir/$LAUNCH_AGENTS_SUBDIR"
     local user_data="$homedir/$APP_SUPPORT_SUBDIR/data"
+    local user_input
 
     if sudo -u "$username" test -e "$app_support"; then
         # This will invoke sudo by itself
@@ -102,6 +103,13 @@ install_for_user() {
     <!-- This is assumed to always be empty -->
     <key>StandardOutPath</key>
     <string>$user_data/output.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>GW_LOG_LEVEL</key>
+        <string>INFO</string>
+    </dict>
+
 </dict>
 </plist>
 EOF
@@ -127,13 +135,21 @@ EOF
     fi
 
     # Ensure the agent files cannot just be removed by the user without having admin rights
-    # This requires non-admin files to exist and be owned by the user before changing the user
-    sudo chown "root:admin" "$launch_agents"
+    echo
+    echo "Changing the owner of ~/Library/LaunchAgents to root:admin will prevent $username from removing the agent."
+    echo "A side effect is this also prevents other, legitimate programs from adding agents as well (example Dropbox)"
+    read -p "Do you want root to own $launch_agents (Yes/no)?" user_input
+    echo
+    if ! [[ "$user_input" =~ "no" ]]; then
+        sudo chown "root:admin" "$launch_agents"
+    else
+        # we might want to prevent a previous setting that was not cleaned up
+        sudo chown "$username" "$launch_agents"
+    fi
     sudo chown "root:admin" "$app_support"
     sudo chown "$username" "$user_data"
 
-    # Ensure the agent files cannot be changed by the user (the agent _can_ be removed
-    # by the user, though, as we cannot change the owner of the directory without causing harm)
+    # Ensure the agent files cannot be changed by the user
     sudo chown "root:admin" "$launch_agents/$PLIST_FILENAME"
     sudo chown "root:admin" "$app_support/$SCRIPT_NAME" "$app_support/config.plist"
 
