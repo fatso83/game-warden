@@ -31,7 +31,7 @@
         <!-- We can use the key to invoke special handling in the script based on the process -->
         <key>processPatterns</key>
         <dict>
-            <key>minecraft</key><string>java.*[m]inecraft</string>
+            <key>minecraft</key><string>java .*minecraft</string>
             <key>steam-games</key><string>steamapps</string>
 
             <!--It works for any type of process:-->

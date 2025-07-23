@@ -438,7 +438,7 @@ on shouldQuit()
 end shouldQuit
 
 on ensureAutomationPermissions()
-    debugLog("ensureAutomationPermissions")
+    traceLog("--> ensureAutomationPermissions")
     try
         tell application "System Events"
             -- Utløser automatisk tillatelsesdialog om nødvendig
