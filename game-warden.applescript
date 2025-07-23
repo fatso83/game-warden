@@ -221,7 +221,7 @@ on doLog(textContent)
 
     if appender is "file" then
         local logFile
-        set logFile to appDir & "/applog.txt"
+        set logFile to appDir & "/data/app.log"
         writeFile(logEntry, logFile, true)
     else if appender is "stderr" then
         log(logEntry)
@@ -423,7 +423,7 @@ on gracefulExitMinecraft()
 end gracefulExitMinecraft
 
 on shouldQuit()
-    set uninstallFlag to appDir & "/.uninstall"
+    set uninstallFlag to appDir & "/data/.uninstall"
     try
         set result to do shell script "test -f " & quoted form of uninstallFlag & " && echo yes || echo no"
         if result is "yes" then

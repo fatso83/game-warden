@@ -65,17 +65,15 @@ install_for_user() {
 
     local app_support="$homedir/$APP_SUPPORT_SUBDIR"
     local launch_agents="$homedir/$LAUNCH_AGENTS_SUBDIR"
+    local user_data="$homedir/$APP_SUPPORT_SUBDIR/data"
 
     if sudo -u "$username" test -e "$app_support"; then
         # This will invoke sudo by itself
         ./uninstall.sh "$username"
 
         # This should already have been removed by the application on detection
-        (sleep 1.5; sudo rm -f "$app_support/.uninstall" &)
+        (sleep 1; sudo rm -f "$user_data/.uninstall" &)
     fi
-
-    sudo -u "$username" mkdir -p "$app_support"
-    sudo -u "$username" mkdir -p "$launch_agents"
 
     cat > "$PLIST_FILENAME" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -97,24 +95,29 @@ install_for_user() {
 
     <!-- All log() statements in AppleScripts ends up on standard error -->
     <key>StandardErrorPath</key>
-    <string>$app_support/error.log</string>
+    <string>$user_data/error.log</string>
 
-    <!-- We create an application.log to actually capture application output -->
+    <!-- We create an data/app.log to actually capture application output -->
 
     <!-- This is assumed to always be empty -->
     <key>StandardOutPath</key>
-    <string>$app_support/output.log</string>
+    <string>$user_data/output.log</string>
 </dict>
 </plist>
 EOF
 
+
+    sudo mkdir -p "$app_support"
+    sudo mkdir -p "$user_data"
+    sudo mkdir -p "$launch_agents"
+
     sudo cp "$PLIST_FILENAME" "$launch_agents/"
     sudo osacompile -o "$app_support/$SCRIPT_NAME" "$MONITOR_SCRIPT_SOURCE"
 
-    # do not overwrite configuration files the user has changed
-    UNCHANGED_CONFIG_CHECKSUM=$(md5 --quiet config.plist)
-    if ( [ -e "$app_support/config.plist" ] \
-        &&  ! (md5 -c "$UNCHANGED_CONFIG_CHECKSUM" --quiet "$app_support/config.plist" > /dev/null)); then
+    # do not overwrite configuration file we have changed
+    UNCHANGED_CONFIG_CHECKSUM=$(sudo md5 --quiet config.plist)
+    if ( sudo -u "$username" test -e "$app_support/config.plist"  \
+        &&  ! (sudo md5 -c "$UNCHANGED_CONFIG_CHECKSUM" --quiet "$app_support/config.plist" > /dev/null)); then
         NEW_CONFIG="$app_support/config.plist.new"
         echo "Detected custom config: not overwriting."
         echo "Putting new reference config next to it as $NEW_CONFIG"
@@ -124,9 +127,15 @@ EOF
     fi
 
     # Ensure the agent files cannot just be removed by the user without having admin rights
+    # This requires non-admin files to exist and be owned by the user before changing the user
+    sudo chown "root:admin" "$launch_agents"
+    sudo chown "root:admin" "$app_support"
+    sudo chown "$username" "$user_data"
+
+    # Ensure the agent files cannot be changed by the user (the agent _can_ be removed
+    # by the user, though, as we cannot change the owner of the directory without causing harm)
     sudo chown "root:admin" "$launch_agents/$PLIST_FILENAME"
     sudo chown "root:admin" "$app_support/$SCRIPT_NAME" "$app_support/config.plist"
-
 
     sudo launchctl bootstrap "gui/$user_uid" "$launch_agents/$PLIST_FILENAME" || true
     echo "✅ Installed for $username"
