@@ -1,6 +1,3 @@
-# game-warden
-> Monitor screen time on macOS of games (or other processes) and kill them if the user exceeds the thresholds
-
 ```
   ______   ______   ______   ______   ______   ______   ______   ______   ______   ______   ______
  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/
@@ -17,8 +14,10 @@
   ______   ______   ______   ______   ______   ______   ______   ______   ______   ______   ______
  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/
 ```
+# game-warden
+> Monitor screen time on macOS of games (or other processes) and kill them if the user exceeds the thresholds
 
-# What is it?
+# Why?
 Originally, this was a a script to fix Minecraft issue [(MCL-14705)](https://bugs.mojang.com/browse/MCL/issues/MCL-14705),
 which is that Apple's Screen Time feature sucks at controlling applications that are built
 using Java technology. Previously it did not block them at all, and per July 2025 it
