@@ -75,6 +75,37 @@ You can see the basic settings in the file `config.plist`, which you can open in
 ```
 Just change the values as you see fit. This is what I found right for my 7 year old. Once you feel you have the settings right, just re-run `./install.sh`.
 
+# Tips and tricks
+
+## Checking the state from another machine
+Put something like this in a script
+```bash
+REMOTE=my-remote-server
+REMOTE_USER_TO_CHECK=johndoe
+echo; read -s  -p "Enter remote sudo password: " REMOTE_SUDO_PW;
+echo;
+ssh $REMOTE cat \| sudo --prompt="" -S --  cat \"/Users/${REMOTE_USER_TO_CHECK}/Library/Application Support/game-warden/data/usage-state.dat\"  <<< $REMOTE_SUDO_PW;
+unset $REMOTE_SUDO_PW
+
+Enter remote sudo password:
+01:00:25,03:59:58
+```
+
+## Resetting the config or state without re-installing
+Just create the .uninstall flag to make the process quit
+```bash
+$ whoami
+janedoe
+
+$ cd ~johndoe/Library/Application Support/game-warden
+
+# reset the usage db
+$ sudo -u johndoe touch data/.uninstall; sudo rm data/usage-state.dat;
+
+# to start using a changed config.plist, just make the process restart:
+$ sudo -u johndoe touch data/.uninstall
+```
+
 # Development
 
 If you want to hack on this, feel free! You might find it useful to observe these tips:
