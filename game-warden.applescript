@@ -75,7 +75,7 @@ on main()
  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/\
  ")
 
-    set exitMessage to configWithDefault("customExitMessage", "Timeout! Save and exit to avoid losing work.")
+    set exitMessage to configWithDefault("customExitMessage", "Save and exit to avoid losing work.")
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     updateDailyUsageLimit()
     set secondsBeforeWarning to timeToSeconds(configWithDefault("warnTime", "00:02:00"))
@@ -162,7 +162,8 @@ on main()
                 try
                     infoLog("Killing the current process")
                     do shell script "kill " & processId
-                    display dialog "Timeout!" buttons {"OK"} default button "OK"
+
+                    displayNotification("Timeout!")
                 end try
             -- soft and graceful exit
             else if totalDailySeconds() > dailyUsageLimit or totalWeeklySeconds() > weeklyUsageLimit then
@@ -189,10 +190,16 @@ on showWarningIfCloseToThreshold()
             set hasShownWarning to true
             tell application "Finder" to activate
             delay 0.5
-            display dialog exitMessage buttons {"OK"} default button "OK"
+
+            # this is blocking
+            displayNotification(exitMessage)
         end if
     end if
 end showWarningIfCloseToThreshold
+
+on displayNotification(msg)
+    display notification msg with title "Game Warden"
+end displayNotification
 
 on readFileOrDefault(filePath, defaultValue)
     try
@@ -386,6 +393,9 @@ on gracefulExit(matchedProcess)
 end gracefulExit
 
 on gracefulExitMinecraft()
+
+    displayNotification("Timeout! Trying to exit gracefully")
+
     tell application "System Events"
 
         -- Assumption: play screen
@@ -418,8 +428,6 @@ on gracefulExitMinecraft()
 
         -- Quits!
         key code 36 -- Enter
-
-        display dialog "Timeout!" buttons {"OK"} default button "OK"
     end tell
 end gracefulExitMinecraft
 
