@@ -43,5 +43,9 @@
         <!-- This might be moved to language resource files, potentially-->
         <!--<key>customExitMessage</key>-->
         <!--<string>Lagre og avslutt umiddelbart!</string>-->
+
+        <!--Optional warn action to invoke-->
+        <!--<key>warnAction</key>-->
+        <!--<string>say -v Zarvox "Hey. Remember to exit the game, earthlings."</string>-->
     </dict>
 </plist>

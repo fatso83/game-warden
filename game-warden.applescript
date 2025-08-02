@@ -7,6 +7,7 @@ use scripting additions
 
 -- log levels - setup by setupLogging()
 property nsLogLevels        : missing value
+-- defaults can be overridden using the environment variable GW_LOG_LEVEL
 property currentLogLevel    : missing value
 
 property weeklyUsageLimit   : missing value
@@ -16,7 +17,7 @@ property secondsBeforeWarning : missing value
 property plistPath          : missing value
 property hasShownWarning    : false
 property usageStateFile     : missing value
-property exitMessage        : missing value
+property warnMessage        : missing value
 
 -- This needs delayed setting for a strange reason:
 -- if I set the property here, it seems that "user domain" gets set to root, but only when installed as an agent, not
@@ -25,7 +26,10 @@ property exitMessage        : missing value
 property appDir             : missing value -- Otherwise: POSIX path of (path to application support folder from user domain) & "game-warden"
 
 -- either stderr or file - stderr is mostly useful when developing, file for non-interactive work
+-- can be overridden using the environment variable GW_APPENDER
 property appender           : "file"
+
+property warnAction         : missing value
 
 -- Record to store usage state
 -- Problems to keep an eye out for
@@ -54,7 +58,7 @@ on run argv
 end run
 
 on main()
-    local currentUser, warnTimeDaily, warnTimeWeekly, matchedProcess, activeProcessHasMatch, interval, saveInterval
+    local currentUser, matchedProcess, activeProcessHasMatch, interval, saveInterval
 
     set appDir  to (POSIX path of (path to application support folder from user domain)) & "game-warden"
     setupLogging()
@@ -75,10 +79,11 @@ on main()
  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/  /_____/\
  ")
 
-    set exitMessage to configWithDefault("customExitMessage", "Save and exit to avoid losing work.")
+    set warnMessage to configWithDefault("customExitMessage", "Save and exit to avoid losing work.")
     set weeklyUsageLimit to timeToSeconds(configWithDefault("weeklyMax", "05:00") & ":00")
     updateDailyUsageLimit()
     set secondsBeforeWarning to timeToSeconds(configWithDefault("warnTime", "00:02:00"))
+    set warnAction to configWithDefault("warnAction", missing value)
     set usageStateFile to userData("usage-state.dat")
     set currentUser to do shell script "whoami"
     debugLog("script running as user: " & currentUser)
@@ -191,8 +196,13 @@ on showWarningIfCloseToThreshold()
             tell application "Finder" to activate
             delay 0.5
 
-            # this is blocking
-            displayNotification(exitMessage)
+            # this is a non-blocking system message (typically displayed as a box appearing in the top-right corner)
+            displayNotification(warnMessage)
+
+            if warnAction is not missing value then
+                do shell script warnAction
+            end if
+
         end if
     end if
 end showWarningIfCloseToThreshold
