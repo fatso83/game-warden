@@ -2,17 +2,12 @@
 # Install the game-warden script as LaunchAgent for selected users
 set -euo pipefail
 
-PLIST_ID="no.kopseng.game-warden"
-PLIST_FILENAME="$PLIST_ID.plist"
-SCRIPT_NAME="game-warden.scpt"
+# ensure all references are relative to the original script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+pushd "$SCRIPT_DIR" > /dev/null || fail
 
-APP_SUPPORT_SUBDIR="Library/Application Support/game-warden"
-LAUNCH_AGENTS_SUBDIR="Library/LaunchAgents"
-
-MONITOR_SCRIPT_SOURCE="game-warden.applescript"
-
-# global
-SELECTED_USERS=()
+# globals SELECTED_USERS
+source shared.inc
 
 main() {
     trap cleanup EXIT
@@ -23,7 +18,7 @@ main() {
 
     if [[ ${#SELECTED_USERS[@]} -eq 0 ]]; then
         list_users
-        prompt_for_users
+        prompt_for_users "👤 Enter comma-separated list of usernames to install for: "
     fi
 
     for username in "${SELECTED_USERS[@]}"; do
@@ -36,27 +31,6 @@ cleanup() {
     rm -f "$PLIST_FILENAME"
 }
 
-list_users() {
-    local user
-    echo "📋 Available users:"
-    dscl . list /Users | while read -r user; do
-        if [[ -d "/Users/$user" ]] && [[ "$user" != "_"* ]]; then
-            echo "$user"
-         fi
-     done
- }
-
-prompt_for_users() {
-    read -p "👤 Enter comma-separated list of usernames to install for: " user_input
-    IFS=',' read -ra SELECTED_USERS <<< "$user_input"
-    for user in "${SELECTED_USERS[@]}"; do
-        homedir="/Users/$user"
-        if [[ ! -d "$homedir" ]]; then
-            echo "❌ Home directory for $user not found: $homedir"
-            exit 1
-        fi
-    done
-}
 
 install_for_user() {
     local username="$1"
@@ -156,6 +130,8 @@ EOF
     sudo launchctl bootstrap "gui/$user_uid" "$launch_agents/$PLIST_FILENAME" || true
     echo "✅ Installed for $username"
     echo
+
+    sudo ln -s reset-time.sh /usr/local/bin/game-warden-reset-time
 }
 
 main "$@"
