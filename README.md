@@ -52,8 +52,6 @@ smagriser
 ✅ Installed for smagriser
 ```
 
-That's it!
-
 ## 3. Customise the settings
 You can see the basic settings in the file `config.plist`, which you can open in any text editor. Example:
 ```xml
@@ -73,6 +71,11 @@ You can see the basic settings in the file `config.plist`, which you can open in
         ...
 ```
 Just change the values as you see fit. This is what I found right for my 7 year old. Once you feel you have the settings right, just re-run `./install.sh`.
+
+## 4. Log in as the child user and grant permissions
+`osascript` needs to access System Events and only the logged in user can allow that. Therefore you need to login as the child, which will start the 
+`LaunchAgent` that runs the AppleScript and subsequently ask the current user to allow the script to view System Events.
+Grant the permission and logout. This is only required _once_ - never again, such as after changing settings.
 
 # Tips and tricks
 
