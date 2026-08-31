@@ -131,7 +131,8 @@ EOF
     echo "✅ Installed for $username"
     echo
 
-    sudo ln -s reset-time.sh /usr/local/bin/game-warden-reset-time
+    # Replace a previous link so rerunning the installer remains idempotent.
+    sudo ln -sfn "$SCRIPT_DIR/reset-time.sh" /usr/local/bin/game-warden-reset-time
 }
 
 main "$@"

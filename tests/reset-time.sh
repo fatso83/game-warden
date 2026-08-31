@@ -20,6 +20,9 @@ touch "$oskar_app_support/config.plist" "$oskar_app_support/data/usage-state.dat
 cat > "$stub_bin/sudo" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$SUDO_LOG"
+if [[ "$1" == test && "$2" == -e ]]; then
+    test -e "$3"
+fi
 EOF
 chmod +x "$stub_bin/sudo"
 
@@ -41,8 +44,12 @@ if ! grep -Fq "$users_root/august/Library/Application Support/game-warden/data/u
     echo 'sudo did not reference august paths' >&2
     exit 1
 fi
-if grep -Fqi oskar "$sudo_log"; then
-    echo 'sudo must not be invoked for oskar' >&2
+if ! grep -Fq "test -e $users_root/august/Library/LaunchAgents/no.kopseng.game-warden.plist" "$sudo_log"; then
+    echo 'installation detection must use sudo to read the LaunchAgent plist' >&2
+    exit 1
+fi
+if grep -Eq "^(rm -f|touch) .*oskar" "$sudo_log"; then
+    echo 'reset commands must not be invoked for oskar' >&2
     exit 1
 fi
 
