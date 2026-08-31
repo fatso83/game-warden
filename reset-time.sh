@@ -6,6 +6,7 @@
 set -euo pipefail
 
 SOURCE="$0"
+GW_USERS_ROOT="${GW_USERS_ROOT:-/Users}"
 
 main(){
     # globals SELECTED_USERS
@@ -24,6 +25,10 @@ main(){
     fi
 
     for username in "${SELECTED_USERS[@]}"; do
+        if [[ ! -e "$GW_USERS_ROOT/$username/$LAUNCH_AGENTS_SUBDIR/$PLIST_FILENAME" ]]; then
+            echo "ℹ️ $username has no Game Warden installation."
+            continue
+        fi
         echo "📦 Resetting game time for $username ..."
         reset_time "$username"
     done
@@ -31,7 +36,7 @@ main(){
 
 reset_time(){
     local username="$1"
-    local homedir="/Users/$username"
+    local homedir="$GW_USERS_ROOT/$username"
 
     local user_data="$homedir/$APP_SUPPORT_SUBDIR/data"
 
