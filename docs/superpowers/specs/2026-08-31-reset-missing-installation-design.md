@@ -8,11 +8,14 @@ that user.
 
 ## Design
 
-`reset_time` will first check for the user’s Game Warden application-support
-directory at `/Users/<username>/Library/Application Support/game-warden`.
+The per-user loop will check for the installed LaunchAgent plist at
+`/Users/<username>/Library/LaunchAgents/no.kopseng.game-warden.plist` before
+emitting the existing reset progress line. This is the installation marker
+because normal uninstalls intentionally retain the application-support
+configuration and state.
 
-- If it exists, reset usage state exactly as today and retain the existing reset
-  progress message.
+- If it exists, print the existing reset progress message and reset usage state
+  exactly as today.
 - If it does not exist, do not invoke `sudo rm` or `sudo touch`; print
   `ℹ️ <username> has no Game Warden installation.` using the supplied username.
 - Requests containing both installed and uninstalled users are handled in the
