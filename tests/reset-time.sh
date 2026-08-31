@@ -9,7 +9,11 @@ trap 'rm -rf "$temp_root"' EXIT
 users_root="$temp_root/users"
 stub_bin="$temp_root/bin"
 sudo_log="$temp_root/sudo.log"
-mkdir -p "$users_root/august/Library/Application Support/game-warden/data" "$stub_bin"
+august_app_support="$users_root/august/Library/Application Support/game-warden"
+oskar_app_support="$users_root/oskar/Library/Application Support/game-warden"
+mkdir -p "$august_app_support/data" "$users_root/august/Library/LaunchAgents" \
+    "$oskar_app_support/data" "$oskar_app_support/config" "$stub_bin"
+touch "$users_root/august/Library/LaunchAgents/no.kopseng.game-warden.plist"
 
 cat > "$stub_bin/sudo" <<'EOF'
 #!/usr/bin/env bash

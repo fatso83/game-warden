@@ -25,7 +25,7 @@ main(){
     fi
 
     for username in "${SELECTED_USERS[@]}"; do
-        if [[ ! -d "$GW_USERS_ROOT/$username/$APP_SUPPORT_SUBDIR" ]]; then
+        if [[ ! -e "$GW_USERS_ROOT/$username/$LAUNCH_AGENTS_SUBDIR/$PLIST_FILENAME" ]]; then
             echo "ℹ️ $username has no Game Warden installation."
             continue
         fi
